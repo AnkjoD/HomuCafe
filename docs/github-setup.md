@@ -15,6 +15,14 @@ Rule kỹ thuật, hướng dẫn đóng góp và task chức năng thông thư�
 
 ## Checklist cho người quản lý repo
 
+### Kết quả thiết lập ngày 14/10/2026
+
+- Đã push khung ứng dụng, quy định, mẫu Issue/PR và workflow build lên `main`; giữ repo private.
+- Đã tạo bốn [Issues chuẩn bị](https://github.com/AnkjoD/HomuCafe/issues), chưa gán thành viên/deadline.
+- [Build đầu tiên trên GitHub Actions](https://github.com/AnkjoD/HomuCafe/actions/runs/38525119893) đã thành công.
+- Chưa bật được bảo vệ nhánh: GitHub API trả HTTP 403 và yêu cầu nâng cấp GitHub Pro hoặc đổi repo sang public. Giữ private theo định hướng hiện tại; nhóm cần tuân thủ PR/review thủ công cho tới khi có gói hỗ trợ. Không có cơ chế kỹ thuật chặn push trực tiếp trong cấu hình hiện tại.
+- Chưa mời cộng tác viên vì chưa có username; chưa tạo bảng Project. Có thể giao việc trước bằng Assignee và trạng thái Issue.
+
 Các mục dưới đây là hướng dẫn. Chỉ đánh dấu sau khi đã áp dụng và kiểm tra trên GitHub.
 
 - [ ] Settings → Collaborators: thêm từng thành viên bằng tài khoản cá nhân, quyền đủ làm việc; hạn chế số người có quyền quản trị.

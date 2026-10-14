@@ -2,6 +2,15 @@
 
 Danh sách này là đầu vào để tạo Issues, chưa phải phân công hoặc cam kết deadline. Task triển khai tính năng chỉ tạo sau khi nhóm chốt phạm vi và phụ thuộc.
 
+Bốn task chuẩn bị đã được tạo, chưa gán thành viên hoặc deadline:
+
+- [#1 Chốt phạm vi và cách triển khai](https://github.com/AnkjoD/HomuCafe/issues/1)
+- [#2 Chốt luồng và quy tắc nghiệp vụ](https://github.com/AnkjoD/HomuCafe/issues/2)
+- [#3 Phác thảo màn hình](https://github.com/AnkjoD/HomuCafe/issues/3)
+- [#4 Thiết kế database](https://github.com/AnkjoD/HomuCafe/issues/4)
+
+Dùng Issues để theo dõi trạng thái; bảng dưới chỉ mô tả thứ tự và phụ thuộc dự kiến.
+
 | Thứ tự | Task | Đầu ra / nghiệm thu | Phụ thuộc |
 | --- | --- | --- | --- |
 | 1 | Chốt phạm vi và cách triển khai | Cập nhật `scope.md`, chốt một/nhiều máy, bán tại bàn/mang đi và chức năng ưu tiên | Thảo luận nhóm |
