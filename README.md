@@ -35,4 +35,6 @@ Trên macOS/Linux dùng `./mvnw` thay cho `.\mvnw.cmd`. Trong IDE, mở dự án
 
 Quy định và tài liệu chung được lưu trong repo. Task cụ thể được theo dõi bằng Issues; trao đổi quan trọng trong chat cần ghi lại vào Issue hoặc tài liệu để nhóm tra cứu.
 
+**Quy trình merge nhóm đã chọn:** giữ repo private, thành viên làm trên nhánh riêng và mở PR cho `AnkjoD` duyệt; chỉ trưởng nhóm hoặc người được chỉ định trong PR thực hiện merge. PR của trưởng nhóm cần một thành viên khác duyệt. Đây là quy ước thủ công vì repo hiện chưa có bảo vệ nhánh; xem chi tiết trong [CONTRIBUTING.md](CONTRIBUTING.md).
+
 Repo chưa chọn giấy phép phân phối. Nhóm cần thống nhất quyền sử dụng mã nguồn trước khi công bố sản phẩm cho bên ngoài.

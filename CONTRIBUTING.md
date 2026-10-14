@@ -1,5 +1,21 @@
 # Quy định làm việc nhóm
 
+## Quyền duyệt và merge — quy trình nhóm đã chọn
+
+Nhóm giữ repo private và dùng gói hiện tại, không yêu cầu nâng cấp trả phí. Các quy định dưới đây là cam kết làm việc; GitHub hiện chưa tự chặn người có quyền write bỏ qua chúng.
+
+1. Thành viên chỉ push lên nhánh task của mình, không push trực tiếp, force push hoặc xóa nhánh `main`.
+2. Khi sẵn sàng, mở Pull Request (PR) từ nhánh task vào `main`, liên kết Issue và yêu cầu `AnkjoD` review.
+3. PR của thành viên phải được trưởng nhóm `AnkjoD` duyệt bằng **Approve** trên GitHub. Thành viên khác có thể góp ý/review, nhưng việc đó không thay thế phê duyệt của trưởng nhóm.
+4. Chỉ `AnkjoD` hoặc người được trưởng nhóm chỉ định rõ trong chính PR mới được bấm **Merge**. Người được ủy quyền chỉ merge sau khi PR đáp ứng điều kiện review và kiểm tra.
+5. Chỉ merge khi đã giải quyết góp ý bắt buộc, kiểm tra liên quan thành công và hai build Windows/Linux đều đạt. Có commit mới sau khi duyệt thì phải yêu cầu người review kiểm tra và duyệt lại trước khi merge.
+6. Với PR do `AnkjoD` tạo, cần một thành viên khác review và Approve; `AnkjoD` thực hiện merge sau đó. Không tự duyệt PR của mình.
+7. Nếu lỡ đẩy code trực tiếp vào `main`, báo trưởng nhóm ngay cùng commit liên quan. Thống nhất cách khôi phục qua PR/revert khi cần; không tự force push để che hoặc sửa lịch sử chung.
+
+Luồng thống nhất: **nhánh task → PR → review/Approve → build đạt → trưởng nhóm merge → cập nhật task**.
+
+Collaborator có quyền write vẫn có khả năng kỹ thuật push/merge khi nhánh chưa được bảo vệ. Quy định này không phải cơ chế khóa quyền; không được coi file nội quy hoặc mẫu PR là đã bật bảo vệ nhánh.
+
 ## Nhận và thực hiện task
 
 - Mỗi task có một Issue, một người chịu trách nhiệm chính, đầu ra, tiêu chí nghiệm thu, phụ thuộc và hạn dự kiến.
@@ -18,16 +34,16 @@ git commit -m "feat(menu): add product form"
 git push -u origin feature/12-them-mon
 ```
 
-Sau đó mở PR trên GitHub, liên kết `Closes #12`, chọn người review. Nếu nhánh bị xung đột, cập nhật `main` vào nhánh của mình và phối hợp với người sửa phần liên quan; không chọn ghi đè toàn bộ cho nhanh.
+Sau đó mở PR trên GitHub, liên kết `Closes #12`, yêu cầu `AnkjoD` review. Nếu nhánh bị xung đột, cập nhật `main` vào nhánh của mình và phối hợp với người sửa phần liên quan; không chọn ghi đè toàn bộ cho nhanh.
 
 ## Review và hoàn thành
 
 - PR tập trung vào một thay đổi liên quan; ghi cách kiểm tra và kèm ảnh/video khi đổi giao diện.
-- Cần ít nhất một người khác review: kiểm tra yêu cầu, nghiệp vụ, lỗi có thể xảy ra và khả năng chạy.
+- Reviewer kiểm tra yêu cầu, nghiệp vụ, lỗi có thể xảy ra và khả năng chạy; người phê duyệt thực hiện theo mục Quyền duyệt và merge bên trên.
 - Chạy `mvnw.cmd clean verify` trên Windows hoặc `./mvnw clean verify` trên macOS/Linux. Kiểm tra thủ công luồng giao diện liên quan; thêm test cho nghiệp vụ đáng kiểm chứng.
 - Chỉ merge khi đã xử lý góp ý bắt buộc và kiểm tra tự động thành công. Ưu tiên Squash and merge, xóa nhánh task sau khi ghép.
 - Task Done khi đáp ứng nghiệm thu, đã merge và kiểm tra được trong ứng dụng chung. Có thể mở Draft PR sớm để xin góp ý.
-- Review luân phiên; trưởng nhóm điều phối chứ không phải người duy nhất kiểm tra mọi phần.
+- Các thành viên luân phiên hỗ trợ review; trưởng nhóm giữ trách nhiệm phê duyệt PR của thành viên và điều phối merge.
 
 ## Quy ước code và dữ liệu
 

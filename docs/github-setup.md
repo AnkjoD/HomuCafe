@@ -21,7 +21,13 @@ Rule kỹ thuật, hướng dẫn đóng góp và task chức năng thông thư�
 - Đã tạo bốn [Issues chuẩn bị](https://github.com/AnkjoD/HomuCafe/issues), chưa gán thành viên/deadline.
 - [Build đầu tiên trên GitHub Actions](https://github.com/AnkjoD/HomuCafe/actions/runs/38525119893) đã thành công.
 - Chưa bật được bảo vệ nhánh: GitHub API trả HTTP 403 và yêu cầu nâng cấp GitHub Pro hoặc đổi repo sang public. Giữ private theo định hướng hiện tại; nhóm cần tuân thủ PR/review thủ công cho tới khi có gói hỗ trợ. Không có cơ chế kỹ thuật chặn push trực tiếp trong cấu hình hiện tại.
-- Chưa mời cộng tác viên vì chưa có username; chưa tạo bảng Project. Có thể giao việc trước bằng Assignee và trạng thái Issue.
+- Ở lần kiểm tra tiếp theo, đã có hai lời mời cộng tác viên quyền write gửi tới `maiduyphuonh` và `anhtu437`, đang chờ chấp nhận tại thời điểm kiểm tra. Chưa tạo bảng Project. Có thể giao việc trước bằng Assignee và trạng thái Issue.
+
+### Quy trình đã chọn: private và review thủ công
+
+Nhóm chọn giữ gói hiện tại, không nâng cấp trả phí. Thành viên mở PR cho `AnkjoD` duyệt; chỉ trưởng nhóm hoặc người được chỉ định rõ trong PR thực hiện merge. PR của trưởng nhóm cần thành viên khác duyệt. Chi tiết có trong [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+Các mục checklist bảo vệ nhánh và bắt buộc checks dưới đây chỉ áp dụng khi gói hỗ trợ trong tương lai; không phải việc cần nâng cấp để hoàn tất setup hiện tại. Trong lúc chưa có bảo vệ, kiểm tra review và kết quả build thủ công trước mỗi lần merge.
 
 Các mục dưới đây là hướng dẫn. Chỉ đánh dấu sau khi đã áp dụng và kiểm tra trên GitHub.
 
