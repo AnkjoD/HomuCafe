@@ -1,5 +1,13 @@
 # Kiến trúc nền
 
+## Cập nhật sau khi chuyển sang Swing
+
+Người học đã chọn Java Swing thay JavaFX. Mã chạy hiện tại khởi động bằng `app/SwingLauncher`, dựng `WorkspaceView` và các `JPanel`; không nạp FXML hoặc CSS. Quy tắc chia package theo chức năng và tách View/Controller/Service vẫn giữ nguyên. Phần mô tả JavaFX bên dưới là ghi nhận khung ban đầu, không phải hướng dẫn chạy hiện tại.
+
+Hiện mới hoàn thành giao diện dùng dữ liệu mẫu. `InventoryView` cung cấp getter và `showRows()` để nối `InventoryController`. `SampleScreens` tạm chứa bố cục các phân hệ khác để duyệt, sẽ tách sang từng package khi triển khai nghiệp vụ. Chưa có Controller/Service nghiệp vụ, xác thực thật hoặc kết nối database.
+
+`PreviewRole` chỉ điều khiển các màn hình có thể mở trong chế độ thiết kế. Tài khoản và quyền thật phải do backend kiểm tra khi triển khai. Tác vụ mạng/database cần chạy nền bằng `SwingWorker` hoặc executor phù hợp; cập nhật các thành phần Swing trên EDT.
+
 ## Trạng thái
 
 Khung hiện tại là ứng dụng JavaFX Maven với một màn hình chào bằng FXML/CSS. Chưa có database, xác thực hoặc nghiệp vụ. Cấu trúc phía dưới là quy ước mở rộng, không phải các chức năng đã hoàn thành.
