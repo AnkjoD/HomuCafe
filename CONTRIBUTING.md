@@ -18,7 +18,7 @@ Collaborator có quyền write vẫn có khả năng kỹ thuật push/merge khi
 
 ## Nhận và thực hiện task
 
-- Mỗi task có một Issue, một người chịu trách nhiệm chính, đầu ra, tiêu chí nghiệm thu, phụ thuộc và hạn dự kiến.
+- Mỗi task có một Issue, mã HC-UC/BR liên quan, một người chịu trách nhiệm chính, đầu ra, nghiệm thu và phụ thuộc. Hạn chỉ gán sau khi người làm xác nhận; không bịa deadline hoặc coi ước lượng là cam kết.
 - Mỗi người ưu tiên một task đang làm. Báo sớm khi bị kẹt hoặc có nguy cơ trễ, kèm điều cần hỗ trợ.
 - Lấy code mới nhất từ `main`, tạo nhánh theo task: `feature/12-them-mon`, `fix/28-tong-tien`, `docs/7-luong-ban-hang`.
 - Không push trực tiếp vào `main` sau lần khởi tạo. Không force push hoặc xóa nhánh chung.
@@ -29,7 +29,7 @@ git switch main
 git pull --ff-only origin main
 git switch -c feature/12-them-mon
 # Làm việc, kiểm tra rồi chọn các file cần commit.
-git add src/
+git add <duong-dan-file-thuoc-task>
 git commit -m "feat(menu): add product form"
 git push -u origin feature/12-them-mon
 ```
@@ -51,7 +51,7 @@ Sau đó mở PR trên GitHub, liên kết `Closes #12`, yêu cầu `AnkjoD` rev
 - Tên class dùng PascalCase; biến/phương thức dùng camelCase; package chữ thường; tên code tiếng Anh, giao diện tiếng Việt. File UTF-8, Java thụt 4 dấu cách.
 - Controller xử lý tương tác và cập nhật giao diện. Service xử lý nghiệp vụ. Repository truy cập dữ liệu. Không đặt SQL trong Controller.
 - Giá tiền dùng `BigDecimal`. Quy tắc làm tròn, giảm giá, hủy đơn và thanh toán phải được ghi rõ trước khi triển khai.
-- Tác vụ database, mạng và AI chạy ngoài luồng giao diện JavaFX; cập nhật UI trên luồng JavaFX.
+- Tác vụ database, mạng, in/xuất file lâu và AI chạy ngoài Swing EDT; cập nhật thành phần Swing trên EDT. Không chặn EDT để chờ kết quả tác vụ dài.
 - Thay đổi database phải có script có thứ tự và hướng dẫn cập nhật; không chỉ sửa database riêng trên máy.
 - Khi sửa cấu hình chung, điều hướng hoặc file nhiều người cùng dùng, báo nhóm và ghi tác động trong PR.
 - Không commit mật khẩu, khóa API, dữ liệu khách hàng thật, file build hoặc đường dẫn riêng của máy. Cung cấp cấu hình mẫu không chứa bí mật khi cần.
@@ -62,3 +62,15 @@ Sau đó mở PR trên GitHub, liên kết `Closes #12`, yêu cầu `AnkjoD` rev
 - Cập nhật Issue khi đổi trạng thái, phát hiện trở ngại hoặc thay đổi yêu cầu.
 - Mỗi tuần demo bản chung ít nhất một lần. Các quyết định quan trọng được ghi trong `docs/decisions/` và liên kết Issue liên quan.
 - Đánh giá đóng góp qua đầu ra, chất lượng, review và phối hợp; không chỉ đếm số commit.
+
+
+## Điều kiện Ready và Done
+
+- Đọc [lối vào tài liệu](docs/README.md), [quy tắc nghiệp vụ](docs/business-rules.md) và [kế hoạch](docs/implementation-plan.md) trước khi nhận task.
+- Ready khi có scope, HC-UC/BR hoặc lý do không áp dụng, phụ thuộc, hợp đồng dữ liệu/lỗi, đầu ra và cách kiểm tra. Chưa chốt database thì không để các thành viên tự chọn database khác nhau.
+- Khi thay hành vi, cập nhật use case/BR, thiết kế dữ liệu và nghiệm thu cùng PR. Không suy ra một feature có quyền chỉ từ việc có menu.
+- Khi đổi tiền, quyền, kho, trạng thái hoặc chống ghi lặp, cần kiểm tra nghiệp vụ và trường hợp lỗi thích hợp. Không tạo test chỉ phản chiếu một getter hoặc màu của nút.
+- Không thêm Redis, RabbitMQ, framework hoặc thay cách triển khai nếu chưa có Issue và quyết định kiến trúc. Tham khảo điều kiện mở rộng trong architecture.md.
+- Chỉ stage file thuộc task; xem diff trước commit. Không gom file người khác đang làm, bài học cá nhân, secret, database thật hoặc file build.
+- Test/CI phải được mô tả đúng: `verify` hiện chủ yếu biên dịch/đóng gói khi chưa có test nghiệp vụ. Số tiêu chí trong use case là kế hoạch nghiệm thu, không phải số test đã pass.
+- Task chỉ Done sau nghiệm thu, review/Approve, merge và kiểm tra bản chung; không tự merge PR của mình để rút ngắn quy trình.

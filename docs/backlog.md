@@ -1,24 +1,20 @@
-# Backlog khởi động
+# Backlog và liên kết công việc
 
-Danh sách này là đầu vào để tạo Issues, chưa phải phân công hoặc cam kết deadline. Task triển khai tính năng chỉ tạo sau khi nhóm chốt phạm vi và phụ thuộc.
+## 📋 Công việc chuẩn bị đang theo dõi
 
-Bốn task chuẩn bị đã được tạo, chưa gán thành viên hoặc deadline:
+| Công việc | Issue | Nghiệm thu trọng tâm |
+| --- | --- | --- |
+| PLAN01 Chốt scope/triển khai | [#1](https://github.com/AnkjoD/HomuCafe/issues/1) | Chọn release scope và giải quyết OPEN01 |
+| PLAN02 Chốt nghiệp vụ/quyền | [#2](https://github.com/AnkjoD/HomuCafe/issues/2) | Rà BR và đóng câu hỏi chặn lát cắt |
+| PLAN03 Rà giao diện và luồng | [#3](https://github.com/AnkjoD/HomuCafe/issues/3) | Thiếu quyền, tải/rỗng/lỗi; bổ sung màn hình còn thiếu |
+| PLAN04 Database/fixture | [#4](https://github.com/AnkjoD/HomuCafe/issues/4) | Schema, migration, constraints và dữ liệu tái lập |
 
-- [#1 Chốt phạm vi và cách triển khai](https://github.com/AnkjoD/HomuCafe/issues/1)
-- [#2 Chốt luồng và quy tắc nghiệp vụ](https://github.com/AnkjoD/HomuCafe/issues/2)
-- [#3 Phác thảo màn hình](https://github.com/AnkjoD/HomuCafe/issues/3)
-- [#4 Thiết kế database](https://github.com/AnkjoD/HomuCafe/issues/4)
+Bộ 53 use case đã có để đọc và làm cơ sở review. Bốn Issue chuẩn bị không tự hoàn thành chỉ vì tài liệu đã được đưa lên repo. Mở Issue triển khai sau khi đủ điều kiện Ready; xem [kế hoạch](implementation-plan.md) cho phụ thuộc và các gói IMPL01–IMPL09/REL01.
 
-Dùng Issues để theo dõi trạng thái; bảng dưới chỉ mô tả thứ tự và phụ thuộc dự kiến.
+## 🧭 Các việc cần mở trước khi chia code
 
-| Thứ tự | Task | Đầu ra / nghiệm thu | Phụ thuộc |
-| --- | --- | --- | --- |
-| 1 | Chốt phạm vi và cách triển khai | Cập nhật `scope.md`, chốt một/nhiều máy, bán tại bàn/mang đi và chức năng ưu tiên | Thảo luận nhóm |
-| 2 | Vẽ luồng và quy tắc nghiệp vụ | Luồng bán hàng, trạng thái đơn, quyền, cách tính tiền/sửa/hủy được nhóm duyệt | 1 |
-| 3 | Phác thảo màn hình | Màn hình chính và điều hướng khớp các luồng, có trạng thái trống/lỗi | 2 |
-| 4 | Thiết kế database | ERD, từ điển dữ liệu, ràng buộc và script tạo dữ liệu mẫu được review | 2 |
-| 5 | Chốt hợp đồng giữa các phần | Dữ liệu đầu vào/đầu ra, lỗi và chữ ký phương thức chung cho luồng bán hàng | 2–4 |
-| 6 | Làm một lát cắt bán hàng | Chọn món → tạo đơn → lưu → mở lại; phạm vi nhỏ được chạy trên máy khác | 3–5 |
-| 7 | Chia task tính năng còn lại | Issues nhỏ có người làm, nghiệm thu, phụ thuộc và mốc dự kiến | 6 |
+- [#7 PLAN05 Hợp đồng Controller–Service–Repository và ranh giới transaction](https://github.com/AnkjoD/HomuCafe/issues/7).
+- [#8 DEMO01 Lát cắt đầu tiên có lưu dữ liệu và chạy lại được](https://github.com/AnkjoD/HomuCafe/issues/8), sau khi PLAN01–05 đủ điều kiện.
+- [#9 QA01 Kịch bản nghiệm thu và số đo](https://github.com/AnkjoD/HomuCafe/issues/9): tiền, quyền, trạng thái, xung đột và phục hồi của lát cắt.
 
-Trước task đầu tiên, mỗi thành viên chạy khung trên máy mình và báo kết quả. Trưởng nhóm thiết lập cộng tác viên, bảng task và bảo vệ nhánh theo `github-setup.md`.
+Các Issue trên đã được tạo hoặc cập nhật ngày 21/10/2026. Không tự gán username hoặc deadline chưa được người làm xác nhận. Khi đã có Issue, dùng Assignee và trạng thái trên GitHub làm nguồn theo dõi; không tạo thêm bảng trạng thái mâu thuẫn ở đây.

@@ -1,0 +1,26 @@
+@startuml
+left to right direction
+skinparam monochrome true
+skinparam shadowing false
+actor "Chủ quán" as owner
+actor "Quản lý" as manager
+actor "Thu ngân" as cashier
+actor "Pha chế" as barista
+rectangle HomuCafe {
+  usecase "HC-UC-001\nĐăng nhập hệ thống" as uc_001
+  usecase "HC-UC-002\nKết thúc phiên làm việc" as uc_002
+  usecase "HC-UC-003\nĐổi mật khẩu cá nhân" as uc_003
+}
+owner -- uc_001
+manager -- uc_001
+cashier -- uc_001
+barista -- uc_001
+owner -- uc_002
+manager -- uc_002
+cashier -- uc_002
+barista -- uc_002
+owner -- uc_003
+manager -- uc_003
+cashier -- uc_003
+barista -- uc_003
+@enduml

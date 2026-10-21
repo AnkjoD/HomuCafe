@@ -6,11 +6,15 @@
 
 <!-- Closes #... nếu hoàn thành; Refs #... nếu chỉ làm một phần. -->
 
+## Use case và dữ liệu ảnh hưởng
+
+<!-- HC-UC/BR; quyền, transaction, lịch sử và migration bị ảnh hưởng. Ghi không áp dụng nếu chỉ sửa tài liệu. -->
+
 ## Kiểm tra
 
 - [ ] Đã yêu cầu `AnkjoD` review; nếu tác giả là `AnkjoD`, đã yêu cầu một thành viên khác review.
 - [ ] Đã chạy Maven clean verify.
-- [ ] Đã kiểm tra luồng liên quan, gồm trường hợp lỗi phù hợp.
+- [ ] Đã kiểm tra luồng liên quan, gồm trường hợp lỗi phù hợp; nêu rõ kiểm tra nào thực sự chạy và phần nào chỉ là kế hoạch.
 - [ ] Đã thêm ảnh/video nếu thay đổi giao diện (hoặc ghi không áp dụng).
 - [ ] Đã cập nhật tài liệu/script database nếu cần (hoặc ghi không áp dụng).
 

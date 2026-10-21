@@ -2,7 +2,13 @@
 
 Ứng dụng desktop quản lý quán cà phê, được phát triển bằng Java Swing.
 
-**Trạng thái:** giao diện Swing với dữ liệu mẫu. Có khung điều hướng theo vai trò xem thử và 11 màn hình chính; chưa có đăng nhập thật, Controller/Service nghiệp vụ, database hoặc AI. Menu theo vai trò trong bản mẫu chưa phải cơ chế bảo mật.
+**Trạng thái:** giao diện Swing với dữ liệu mẫu. Có khung điều hướng theo vai trò xem thử và 12 màn hình chính, gồm voucher/mã giảm giá; chưa có đăng nhập thật, Controller/Service nghiệp vụ hoàn chỉnh, database hoặc AI. Menu theo vai trò trong bản mẫu chưa phải cơ chế bảo mật.
+
+## Tài liệu và kế hoạch cho thành viên
+
+Bắt đầu từ [trang tài liệu nhóm](docs/README.md): [53 use case](docs/requirements/use-cases.md), [luật nghiệp vụ](docs/business-rules.md), [quy trình làm việc](CONTRIBUTING.md), [kế hoạch triển khai](docs/implementation-plan.md) và [kiến trúc/mở rộng](docs/architecture.md). Có [bản Word](docs/requirements/HomuCafe-Use-case-chi-tiet.docx) để dùng cho báo cáo. Redis/RabbitMQ chưa phải phụ thuộc của bản đầu.
+
+Bộ cập nhật được đưa qua PR #6; nếu PR chưa merge, thành viên đọc/chạy đúng nhánh PR. Repo vẫn giữ private cho nhóm.
 
 ## Chạy trên máy cá nhân
 
@@ -24,16 +30,20 @@ Giao diện dùng FlatLaf 3.7 để có nút, ô nhập và bảng hiện đại
 - `app/SwingLauncher.java`: khởi động cửa sổ trên Swing EDT.
 - `app/WorkspaceView.java`: sidebar, vai trò mẫu và chuyển màn hình bằng CardLayout.
 - `inventory/InventoryView.java`: màn hình kho, getter để nối Controller sau này.
+- `voucher/VoucherView.java`: danh sách mã giảm giá và form tạo mã xem trước. Chủ quán/quản lý thấy mục quản lý; thu ngân có ô nhập mã trong màn hình bán hàng. Nút áp/lưu/tắt mã chưa nối xử lý.
+- `report/ReportView.java`: 6 tab báo cáo mẫu (Tổng quan, Bán hàng, Món bán, Kho, Ca làm, Tài chính). `ReportChart` vẽ biểu đồ đường, cột, thanh, vòng và cột so sánh; `ReportSamples` chứa số liệu minh họa. Tài chính chỉ hiện khi chọn vai trò chủ quán. Khoảng ngày đang cố định; chưa truy vấn database hoặc tính lợi nhuận.
 - `shared/ui/Theme.java`: màu, font, bảng, nút và bố cục dùng chung.
 - `app/SampleScreens.java`: các màn hình mẫu khác; tách sang từng package khi viết chức năng tương ứng.
 
 Các nút nhập kho, kiểm kê, thanh toán… mới được dựng giao diện; chúng chưa lưu dữ liệu. FXML/CSS cũ được giữ lại làm tham khảo và không được ứng dụng Swing nạp.
 
+Voucher dự kiến hỗ trợ giảm phần trăm hoặc số tiền cố định, đơn tối thiểu, trần giảm với mã phần trăm, thời gian hiệu lực và tổng lượt sử dụng. Thiết kế ban đầu áp dụng một mã cho mỗi đơn và chưa cộng dồn giảm thủ công. Đây là phạm vi đề xuất; chưa triển khai kiểm tra điều kiện, giữ lượt dùng hoặc ghi nhận giảm tiền.
+
 `verify` kiểm tra biên dịch/đóng gói và chạy test khi có; hiện chưa có test nghiệp vụ. File JAR tạo ra chưa phải bản cài đặt độc lập. Việc đóng gói cho người dùng sẽ làm ở giai đoạn phát hành.
 
 ## Trước khi nhận task
 
-1. Đọc [phạm vi đề xuất](docs/scope.md) và cùng nhóm chốt các quyết định còn mở.
+1. Đọc [trang tài liệu](docs/README.md), [phạm vi](docs/scope.md) và các quyết định còn mở.
 2. Đọc [kiến trúc](docs/architecture.md) và [quy định đóng góp](CONTRIBUTING.md).
 3. Xem [cách thiết lập GitHub](docs/github-setup.md) và [backlog khởi động](docs/backlog.md).
 4. Chạy được app trên máy, rồi nhận một Issue có đầu ra rõ ràng.

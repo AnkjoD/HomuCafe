@@ -9,6 +9,13 @@ body:
       description: Người dùng cần gì? Task này bao gồm những gì?
     validations:
       required: true
+  - type: input
+    id: use_cases
+    attributes:
+      label: Use case và quy tắc liên quan
+      description: Ghi mã HC-UC/BR; task chuẩn bị có thể ghi không áp dụng kèm lý do.
+    validations:
+      required: true
   - type: textarea
     id: acceptance
     attributes:

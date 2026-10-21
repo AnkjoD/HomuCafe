@@ -1,0 +1,32 @@
+@startuml
+left to right direction
+skinparam monochrome true
+skinparam shadowing false
+actor "Chủ quán" as owner
+actor "Quản lý" as manager
+actor "Thu ngân" as cashier
+actor "Pha chế" as barista
+rectangle HomuCafe {
+  usecase "HC-UC-020\nTheo dõi hàng đợi pha chế" as uc_020
+  usecase "HC-UC-021\nBắt đầu thực hiện món" as uc_021
+  usecase "HC-UC-022\nXác nhận món đã pha xong" as uc_022
+  usecase "HC-UC-023\nXác nhận bàn giao món" as uc_023
+  usecase "HC-UC-024\nBáo món tạm hết hoặc bán lại" as uc_024
+}
+owner -- uc_020
+manager -- uc_020
+barista -- uc_020
+owner -- uc_021
+manager -- uc_021
+barista -- uc_021
+owner -- uc_022
+manager -- uc_022
+barista -- uc_022
+owner -- uc_023
+manager -- uc_023
+cashier -- uc_023
+barista -- uc_023
+owner -- uc_024
+manager -- uc_024
+barista -- uc_024
+@enduml
