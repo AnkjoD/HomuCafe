@@ -231,6 +231,7 @@ public final class Theme {
                 else if(name.contains("Nhân")||name.contains("Khách")){g.drawOval(8,3,8,8);g.drawArc(4,13,16,14,0,180);g.drawLine(4,20,20,20);}
                 else if(name.contains("Thu chi")||name.contains("Ca")){g.drawRoundRect(3,5,18,15,3,3);g.drawRoundRect(14,10,8,6,2,2);g.fillOval(16,12,2,2);}
                 else if(name.contains("Báo")){g.drawLine(4,3,4,21);g.drawLine(4,21,22,21);g.drawLine(9,17,9,12);g.drawLine(14,17,14,6);g.drawLine(19,17,19,9);}
+                else if(name.contains("Voucher")){g.drawRoundRect(3,5,18,14,3,3);g.drawLine(9,15,15,9);g.drawOval(7,8,3,3);g.drawOval(14,13,3,3);}
                 else if(name.contains("Công")||name.contains("Bán")){g.drawRoundRect(5,3,14,18,2,2);g.drawLine(9,8,15,8);g.drawLine(9,12,15,12);g.drawLine(9,16,13,16);}
                 else{g.drawRoundRect(3,3,7,7,2,2);g.drawRoundRect(14,3,7,7,2,2);g.drawRoundRect(3,14,7,7,2,2);g.drawRoundRect(14,14,7,7,2,2);}
             }finally{g.dispose();}

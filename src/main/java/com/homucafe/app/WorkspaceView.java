@@ -7,6 +7,8 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import com.homucafe.inventory.InventoryView;
 import com.homucafe.shared.ui.Theme;
+import com.homucafe.voucher.VoucherView;
+import com.homucafe.report.ReportView;
 
 /** Khung ứng dụng: sidebar, thanh trên và vùng nội dung chuyển bằng CardLayout. */
 public final class WorkspaceView extends JPanel {
@@ -17,6 +19,8 @@ public final class WorkspaceView extends JPanel {
     private final JComboBox<PreviewRole> rolePicker = new JComboBox<>(PreviewRole.values());
     private final Map<String, JButton> navigation = new LinkedHashMap<>();
     private final InventoryView inventoryView = new InventoryView();
+    private final VoucherView voucherView = new VoucherView();
+    private final ReportView reportView = new ReportView();
     private PreviewRole role = PreviewRole.OWNER;
 
     public WorkspaceView() {
@@ -24,7 +28,6 @@ public final class WorkspaceView extends JPanel {
         setBackground(Theme.PAPER);
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
         sidebar.setBackground(Theme.WHITE);
-        sidebar.setPreferredSize(new Dimension(232, 0));
         sidebar.setBorder(new EmptyBorder(26, 16, 20, 16));
         JScrollPane menuScroll = new JScrollPane(sidebar);
         menuScroll.setPreferredSize(new Dimension(232, 0));
@@ -34,7 +37,12 @@ public final class WorkspaceView extends JPanel {
 
         // Tạo sẵn mỗi View một lần; chuyển menu không làm mất nội dung đang nhập.
         for (String name : PreviewRole.OWNER.screens()) {
-            JComponent screen = name.equals("Kho nguyên liệu") ? inventoryView : SampleScreens.create(name);
+            JComponent screen = switch (name) {
+                case "Kho nguyên liệu" -> inventoryView;
+                case "Voucher & ưu đãi" -> voucherView;
+                case "Báo cáo" -> reportView;
+                default -> SampleScreens.create(name);
+            };
             content.add(screen, name);
         }
         content.add(SampleScreens.create("Ca của tôi"), "Ca của tôi");
@@ -63,6 +71,7 @@ public final class WorkspaceView extends JPanel {
             return; // Sự kiện của ComboBox sẽ gọi lại với giá trị đã đồng bộ.
         }
         role = selected;
+        reportView.setOwnerPreview(role == PreviewRole.OWNER);
         sidebar.removeAll();
         navigation.clear();
         JPanel brand = new JPanel(new BorderLayout(12,0));brand.setOpaque(false);
@@ -105,4 +114,5 @@ public final class WorkspaceView extends JPanel {
     }
 
     public InventoryView getInventoryView() { return inventoryView; }
+    public VoucherView getVoucherView() { return voucherView; }
 }

@@ -21,7 +21,6 @@ final class SampleScreens {
             case "Ca của tôi" -> ownShift();
             case "Khách hàng" -> customers();
             case "Thu chi" -> finance();
-            case "Báo cáo" -> reports();
             default -> throw new IllegalArgumentException(name);
         };
     }
@@ -73,7 +72,20 @@ final class SampleScreens {
         JButton pay = Theme.button("Thanh toán", true); Theme.markUnwired(pay);
         JButton send = Theme.button("Gửi pha chế", false); Theme.markUnwired(send);
         pay.setMaximumSize(new Dimension(Integer.MAX_VALUE,46));send.setMaximumSize(new Dimension(Integer.MAX_VALUE,42));
-        JPanel summary=Theme.stack(14,Theme.label("Tổng cộng     102.000 đ",20,Theme.INK),send,pay);
+        JTextField voucherCode = new JTextField();
+        voucherCode.putClientProperty("JTextField.placeholderText", "Nhập mã giảm giá");
+        voucherCode.getAccessibleContext().setAccessibleName("Mã giảm giá cho đơn");
+        JButton applyVoucher = Theme.button("Áp mã", false);
+        // Controller/Service sẽ kiểm tra mã và cập nhật tiền giảm; bản này chỉ dựng ô nhập.
+        applyVoucher.setEnabled(false);
+        Theme.markUnwired(applyVoucher);
+        JPanel voucherRow = new JPanel(new BorderLayout(6, 0));
+        voucherRow.setOpaque(false);
+        voucherRow.add(voucherCode, BorderLayout.CENTER);
+        voucherRow.add(applyVoucher, BorderLayout.EAST);
+        JPanel summary=Theme.stack(10,Theme.label("Voucher / mã giảm giá",11,Theme.MUTED),voucherRow,
+                Theme.label("Giảm voucher                  0 đ",12,Theme.MUTED),
+                Theme.label("Tổng cộng     102.000 đ",20,Theme.INK),send,pay);
         summary.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(1,0,0,0,Theme.LINE),new EmptyBorder(18,0,0,0)));
         bill.add(summary,BorderLayout.SOUTH);
         body.add(bill, BorderLayout.EAST); page.add(body); return page;
@@ -131,9 +143,6 @@ final class SampleScreens {
     private static JPanel finance(){return list("Thu đúng. Chi rõ.","Sổ tiền mẫu • Chênh lệch thu chi không đồng nghĩa lợi nhuận.","+ Ghi khoản chi",
             new String[]{"NGÀY MẪU","NỘI DUNG","PHÂN LOẠI","SỐ TIỀN"},
             new Object[][]{{"16/10/2026","Nhập cà phê Arabica","Nhập nguyên liệu","1.400.000 đ"},{"15/10/2026","Tiền điện tháng 9","Vận hành","1.600.000 đ"},{"14/10/2026","Vật tư vệ sinh","Vận hành","240.000 đ"}});}
-    private static JPanel reports(){return list("Một góc nhìn rõ hơn.","Số liệu mẫu • Tiền thu ròng = tiền thu thành công − tiền hoàn trong kỳ.",null,
-            new String[]{"CHỈ TIÊU","GIÁ TRỊ MẪU","CÁCH HIỂU"},
-            new Object[][]{{"Tiền thu thành công","24.800.000 đ","Theo thời điểm xác nhận thu"},{"Tiền hoàn","200.000 đ","Theo thời điểm xác nhận hoàn"},{"Tiền thu ròng","24.600.000 đ","Trong cùng kỳ báo cáo"},{"Số ly đã bán","568","Không gồm món hủy"}});}
 
     /** Biểu đồ tự vẽ bằng Java2D; không cần ảnh hoặc thư viện bên ngoài. */
     private static final class SalesChart extends JPanel {

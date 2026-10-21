@@ -4,8 +4,8 @@ import java.util.List;
 
 /** Chỉ chọn giao diện mẫu. Không phải đăng nhập hoặc cơ chế bảo mật. */
 public enum PreviewRole {
-    OWNER("Chủ quán", List.of("Tổng quan", "Bán hàng", "Sơ đồ bàn", "Quầy pha chế", "Kho nguyên liệu", "Nhập hàng", "Công thức món", "Nhân viên & ca", "Khách hàng", "Thu chi", "Báo cáo")),
-    MANAGER("Quản lý", List.of("Tổng quan", "Bán hàng", "Sơ đồ bàn", "Quầy pha chế", "Kho nguyên liệu", "Nhập hàng", "Công thức món", "Nhân viên & ca", "Báo cáo")),
+    OWNER("Chủ quán", List.of("Tổng quan", "Bán hàng", "Sơ đồ bàn", "Quầy pha chế", "Kho nguyên liệu", "Nhập hàng", "Công thức món", "Voucher & ưu đãi", "Nhân viên & ca", "Khách hàng", "Thu chi", "Báo cáo")),
+    MANAGER("Quản lý", List.of("Tổng quan", "Bán hàng", "Sơ đồ bàn", "Quầy pha chế", "Kho nguyên liệu", "Nhập hàng", "Công thức món", "Voucher & ưu đãi", "Nhân viên & ca", "Báo cáo")),
     CASHIER("Thu ngân", List.of("Bán hàng", "Sơ đồ bàn", "Ca của tôi")),
     BARISTA("Pha chế", List.of("Quầy pha chế"));
 
