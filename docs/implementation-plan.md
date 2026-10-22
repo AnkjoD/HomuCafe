@@ -1,6 +1,6 @@
 # Kế hoạch triển khai HomuCafe
 
-Ngày cập nhật 21/10/2026. Kế hoạch đi từ 53 mục tiêu người dùng đã mô tả đến lát cắt chạy được, rồi mới mở rộng quản lý. Chưa có đủ thông tin số thành viên, thời gian rảnh và deadline để cam kết lịch theo ngày. Các mốc dưới đây dùng điều kiện vào/ra; trưởng nhóm gán người và hạn sau khi có ước lượng.
+Ngày cập nhật 22/10/2026. Kế hoạch đi từ 53 mục tiêu người dùng đã mô tả đến lát cắt chạy được, rồi mới mở rộng quản lý. Chủ dự án đã đồng ý triển khai theo 14 feature; [backlog](backlog.md) liên kết issue tổng và task con tương ứng. Chưa có đủ thông tin số thành viên, thời gian rảnh và deadline để cam kết lịch theo ngày. Các mốc dưới đây dùng điều kiện vào/ra; trưởng nhóm gán người và hạn sau khi có ước lượng.
 
 ## 🎯 Các mốc và điều kiện nghiệm thu
 
@@ -34,7 +34,7 @@ Không cần xong mọi phần M3 để demo lát cắt M1. Muốn đưa ra quá
 | IMPL09 | Lịch/hồ sơ/khách/thu chi; UC028,036–037,044–047,052 | Quyền và nguồn dữ liệu tương ứng | Quyền khách chủ quán; phân biệt hồ sơ/quyền; không cộng trùng payment/chi nhập |
 | REL01 | Quản trị và phát hành; UC040–043 | Bản release scope hoạt động | Restore thử, chạy máy khác, cấu hình mẫu, hướng dẫn và đánh giá đo thực tế |
 
-Các nhãn IMPL là gói công việc, không phải giao nguyên gói lớn cho một người. Chia tiếp thành Issue có đầu ra độc lập khoảng 1–3 ngày công ước lượng; đó là hướng dẫn kích thước, không phải hạn bắt buộc. Không tạo 53 task theo đúng 53 use case nếu nhiều ca cần một lát cắt chung.
+Các nhãn IMPL là gói công việc, không phải giao nguyên gói lớn cho một người. Backlog đã chia task con theo F01–F14; mã IMPL giữ để giải thích thứ tự tích hợp, không tạo một bộ task trùng. Mỗi task nên có đầu ra độc lập khoảng 1–3 ngày công ước lượng; người nhận chia tiếp nếu còn lớn. Đó là hướng dẫn kích thước, không phải hạn bắt buộc. Không tạo 53 task theo đúng 53 use case nếu nhiều ca cần một lát cắt chung.
 
 ## 👥 Phân công sau khi có thành viên
 
