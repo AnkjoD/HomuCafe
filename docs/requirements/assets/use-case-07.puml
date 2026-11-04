@@ -1,0 +1,22 @@
+@startuml
+left to right direction
+skinparam monochrome true
+skinparam shadowing false
+actor "Chủ quán" as owner
+actor "Quản lý" as manager
+rectangle HomuCafe {
+  usecase "HC-UC-035\nThiết lập chính sách voucher" as uc_035
+  usecase "HC-UC-036\nQuản lý hồ sơ nhân viên" as uc_036
+  usecase "HC-UC-037\nPhân công lịch làm việc" as uc_037
+  usecase "HC-UC-038\nQuản lý tài khoản nhân viên" as uc_038
+  usecase "HC-UC-039\nPhân quyền truy cập" as uc_039
+}
+owner -- uc_035
+manager -- uc_035
+owner -- uc_036
+manager -- uc_036
+owner -- uc_037
+manager -- uc_037
+owner -- uc_038
+owner -- uc_039
+@enduml

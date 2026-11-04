@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740">
+<rect width="100%" height="100%" fill="white"/>
+<rect x="320" y="34" width="850" height="686" rx="4" fill="white" stroke="#222" stroke-width="2"/>
+<text x="745" y="65" text-anchor="middle" font-family="Times New Roman" font-size="30" font-weight="bold">HomuCafe</text>
+<path d="M 140 172.8 L 410 166" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 310.2 L 410 166" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 585.2 L 410 166" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 172.8 L 410 278" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 310.2 L 410 278" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 585.2 L 410 278" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 172.8 L 410 390" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 310.2 L 410 390" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 585.2 L 410 390" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 172.8 L 410 502" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 310.2 L 410 502" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 447.8 L 410 502" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 585.2 L 410 502" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 172.8 L 410 614" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 310.2 L 410 614" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 585.2 L 410 614" fill="none" stroke="#999" stroke-width="1.4"/>
+<g stroke="#222" stroke-width="2.5" fill="none"><circle cx="110" cy="143.8" r="15"/><path d="M110 158.8 V193.8 M80 172.8 H140 M110 193.8 L85 223.8 M110 193.8 L135 223.8"/></g>
+<text x="110" y="252.8" text-anchor="middle" font-family="Times New Roman" font-size="29">Chủ quán</text>
+<g stroke="#222" stroke-width="2.5" fill="none"><circle cx="110" cy="281.2" r="15"/><path d="M110 296.2 V331.2 M80 310.2 H140 M110 331.2 L85 361.2 M110 331.2 L135 361.2"/></g>
+<text x="110" y="390.2" text-anchor="middle" font-family="Times New Roman" font-size="29">Quản lý</text>
+<g stroke="#222" stroke-width="2.5" fill="none"><circle cx="110" cy="418.8" r="15"/><path d="M110 433.8 V468.8 M80 447.8 H140 M110 468.8 L85 498.8 M110 468.8 L135 498.8"/></g>
+<text x="110" y="527.8" text-anchor="middle" font-family="Times New Roman" font-size="29">Thu ngân</text>
+<g stroke="#222" stroke-width="2.5" fill="none"><circle cx="110" cy="556.2" r="15"/><path d="M110 571.2 V606.2 M80 585.2 H140 M110 606.2 L85 636.2 M110 606.2 L135 636.2"/></g>
+<text x="110" y="665.2" text-anchor="middle" font-family="Times New Roman" font-size="29">Pha chế</text>
+<ellipse cx="770" cy="166" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="151" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-020</text>
+<text x="770" y="180" text-anchor="middle" font-family="Times New Roman" font-size="29">Theo dõi hàng đợi pha chế</text>
+<ellipse cx="770" cy="278" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="263" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-021</text>
+<text x="770" y="292" text-anchor="middle" font-family="Times New Roman" font-size="29">Bắt đầu thực hiện món</text>
+<ellipse cx="770" cy="390" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="375" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-022</text>
+<text x="770" y="404" text-anchor="middle" font-family="Times New Roman" font-size="29">Xác nhận món đã pha xong</text>
+<ellipse cx="770" cy="502" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="487" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-023</text>
+<text x="770" y="516" text-anchor="middle" font-family="Times New Roman" font-size="29">Xác nhận bàn giao món</text>
+<ellipse cx="770" cy="614" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="599" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-024</text>
+<text x="770" y="628" text-anchor="middle" font-family="Times New Roman" font-size="29">Báo món tạm hết hoặc bán lại</text>
+</svg>

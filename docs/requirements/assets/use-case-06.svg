@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1020" viewBox="0 0 1200 1020">
+<rect width="100%" height="100%" fill="white"/>
+<rect x="320" y="34" width="850" height="966" rx="4" fill="white" stroke="#222" stroke-width="2"/>
+<text x="745" y="65" text-anchor="middle" font-family="Times New Roman" font-size="30" font-weight="bold">HomuCafe</text>
+<path d="M 140 311.5 L 410 157" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 726.5 L 410 157" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 311.5 L 410 250" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 726.5 L 410 250" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 311.5 L 410 343" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 726.5 L 410 343" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 311.5 L 410 437" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 726.5 L 410 437" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 311.5 L 410 530" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 726.5 L 410 530" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 311.5 L 410 623" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 726.5 L 410 623" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 311.5 L 410 717" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 726.5 L 410 717" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 311.5 L 410 810" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 726.5 L 410 810" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 311.5 L 410 903" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 726.5 L 410 903" fill="none" stroke="#999" stroke-width="1.4"/>
+<g stroke="#222" stroke-width="2.5" fill="none"><circle cx="110" cy="282.5" r="15"/><path d="M110 297.5 V332.5 M80 311.5 H140 M110 332.5 L85 362.5 M110 332.5 L135 362.5"/></g>
+<text x="110" y="391.5" text-anchor="middle" font-family="Times New Roman" font-size="29">Chủ quán</text>
+<g stroke="#222" stroke-width="2.5" fill="none"><circle cx="110" cy="697.5" r="15"/><path d="M110 712.5 V747.5 M80 726.5 H140 M110 747.5 L85 777.5 M110 747.5 L135 777.5"/></g>
+<text x="110" y="806.5" text-anchor="middle" font-family="Times New Roman" font-size="29">Quản lý</text>
+<ellipse cx="770" cy="157" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="142" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-025</text>
+<text x="770" y="171" text-anchor="middle" font-family="Times New Roman" font-size="29">Quản lý danh mục thực đơn</text>
+<ellipse cx="770" cy="250" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="235" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-026</text>
+<text x="770" y="264" text-anchor="middle" font-family="Times New Roman" font-size="29">Quản lý món và biến thể bán</text>
+<ellipse cx="770" cy="343" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="328" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-027</text>
+<text x="770" y="357" text-anchor="middle" font-family="Times New Roman" font-size="29">Thiết lập công thức định lượng</text>
+<ellipse cx="770" cy="437" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="422" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-029</text>
+<text x="770" y="451" text-anchor="middle" font-family="Times New Roman" font-size="29">Quản lý nguyên liệu và đơn vị</text>
+<ellipse cx="770" cy="530" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="515" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-030</text>
+<text x="770" y="544" text-anchor="middle" font-family="Times New Roman" font-size="29">Quản lý nhà cung cấp</text>
+<ellipse cx="770" cy="623" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="608" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-031</text>
+<text x="770" y="637" text-anchor="middle" font-family="Times New Roman" font-size="29">Lập phiếu nhập hàng nháp</text>
+<ellipse cx="770" cy="717" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="702" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-032</text>
+<text x="770" y="731" text-anchor="middle" font-family="Times New Roman" font-size="29">Xác nhận nhập kho thực tế</text>
+<ellipse cx="770" cy="810" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="795" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-033</text>
+<text x="770" y="824" text-anchor="middle" font-family="Times New Roman" font-size="29">Kiểm kê và điều chỉnh chênh lệch kho</text>
+<ellipse cx="770" cy="903" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="888" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-034</text>
+<text x="770" y="917" text-anchor="middle" font-family="Times New Roman" font-size="29">Ghi nhận hao hụt hoặc hủy nguyên liệu</text>
+</svg>
