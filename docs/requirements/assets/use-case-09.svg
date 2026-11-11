@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="920" viewBox="0 0 1200 920">
+<rect width="100%" height="100%" fill="white"/>
+<rect x="320" y="34" width="850" height="866" rx="4" fill="white" stroke="#222" stroke-width="2"/>
+<text x="745" y="65" text-anchor="middle" font-family="Times New Roman" font-size="30" font-weight="bold">HomuCafe</text>
+<path d="M 140 286.5 L 410 156" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 286.5 L 410 249" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 286.5 L 410 341" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 286.5 L 410 434" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 651.5 L 410 434" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 286.5 L 410 526" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 651.5 L 410 526" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 286.5 L 410 619" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 651.5 L 410 619" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 286.5 L 410 711" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 651.5 L 410 711" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 286.5 L 410 804" fill="none" stroke="#999" stroke-width="1.4"/>
+<path d="M 140 651.5 L 410 804" fill="none" stroke="#999" stroke-width="1.4"/>
+<g stroke="#222" stroke-width="2.5" fill="none"><circle cx="110" cy="257.5" r="15"/><path d="M110 272.5 V307.5 M80 286.5 H140 M110 307.5 L85 337.5 M110 307.5 L135 337.5"/></g>
+<text x="110" y="366.5" text-anchor="middle" font-family="Times New Roman" font-size="29">Chủ quán</text>
+<g stroke="#222" stroke-width="2.5" fill="none"><circle cx="110" cy="622.5" r="15"/><path d="M110 637.5 V672.5 M80 651.5 H140 M110 672.5 L85 702.5 M110 672.5 L135 702.5"/></g>
+<text x="110" y="731.5" text-anchor="middle" font-family="Times New Roman" font-size="29">Quản lý</text>
+<ellipse cx="770" cy="156" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="141" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-045</text>
+<text x="770" y="170" text-anchor="middle" font-family="Times New Roman" font-size="29">Ghi nhận khoản thu hoặc chi ngoài bán hàng</text>
+<ellipse cx="770" cy="249" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="234" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-046</text>
+<text x="770" y="263" text-anchor="middle" font-family="Times New Roman" font-size="29">Điều chỉnh khoản thu chi ghi sai</text>
+<ellipse cx="770" cy="341" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="326" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-047</text>
+<text x="770" y="355" text-anchor="middle" font-family="Times New Roman" font-size="29">Xem báo cáo dòng tiền</text>
+<ellipse cx="770" cy="434" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="419" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-048</text>
+<text x="770" y="448" text-anchor="middle" font-family="Times New Roman" font-size="29">Xem báo cáo bán hàng</text>
+<ellipse cx="770" cy="526" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="511" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-049</text>
+<text x="770" y="540" text-anchor="middle" font-family="Times New Roman" font-size="29">Xem báo cáo món và nhóm món</text>
+<ellipse cx="770" cy="619" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="604" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-050</text>
+<text x="770" y="633" text-anchor="middle" font-family="Times New Roman" font-size="29">Xem báo cáo kho nguyên liệu</text>
+<ellipse cx="770" cy="711" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="696" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-051</text>
+<text x="770" y="725" text-anchor="middle" font-family="Times New Roman" font-size="29">Xem báo cáo ca và đối soát</text>
+<ellipse cx="770" cy="804" rx="360" ry="43" fill="white" stroke="#222" stroke-width="2"/>
+<text x="770" y="789" text-anchor="middle" font-family="Times New Roman" font-size="26">HC-UC-053</text>
+<text x="770" y="818" text-anchor="middle" font-family="Times New Roman" font-size="29">Xuất dữ liệu báo cáo được phép</text>
+</svg>

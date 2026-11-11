@@ -4,6 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.homucafe</groupId>
+<<<<<<< HEAD
     <artifactId>HomuCafe-main</artifactId>
     <version>1.0.0</version>
     <name>HomuCafe</name>
@@ -15,12 +16,23 @@
         <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
+=======
+    <artifactId>homucafe</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <name>HomuCafe</name>
+    <description>Swing desktop interface for the HomuCafe team project</description>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.release>21</maven.compiler.release>
+    </properties>
+>>>>>>> origin/main
     <dependencies>
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
             <version>3.7</version>
         </dependency>
+<<<<<<< HEAD
         <dependency>
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
@@ -30,6 +42,10 @@
 
     <build>
         <sourceDirectory>src</sourceDirectory>
+=======
+    </dependencies>
+    <build>
+>>>>>>> origin/main
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -43,11 +59,19 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
+<<<<<<< HEAD
                 <configuration>
                     <source>17</source>
                     <target>17</target>
                     <encoding>UTF-8</encoding>
                 </configuration>
+=======
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+>>>>>>> origin/main
             </plugin>
         </plugins>
     </build>

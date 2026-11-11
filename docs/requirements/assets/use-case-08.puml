@@ -1,0 +1,18 @@
+@startuml
+left to right direction
+skinparam monochrome true
+skinparam shadowing false
+actor "Chủ quán" as owner
+rectangle HomuCafe {
+  usecase "HC-UC-040\nCấu hình cửa hàng và thiết bị" as uc_040
+  usecase "HC-UC-041\nSao lưu dữ liệu" as uc_041
+  usecase "HC-UC-042\nKhôi phục dữ liệu từ bản sao" as uc_042
+  usecase "HC-UC-043\nTra cứu nhật ký thao tác" as uc_043
+  usecase "HC-UC-044\nQuản lý hồ sơ khách hàng nội bộ" as uc_044
+}
+owner -- uc_040
+owner -- uc_041
+owner -- uc_042
+owner -- uc_043
+owner -- uc_044
+@enduml

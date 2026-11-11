@@ -1,0 +1,37 @@
+.root {
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-size: 15px;
+    -fx-background-color: #faf6ef;
+}
+.welcome {
+    -fx-padding: 48;
+}
+.label {
+    -fx-text-fill: #43352c;
+}
+.eyebrow {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #826343;
+}
+.title {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+}
+.subtitle {
+    -fx-font-size: 19px;
+}
+.button {
+    -fx-background-color: #536b4f;
+    -fx-text-fill: white;
+    -fx-padding: 12 22;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+.button:hover {
+    -fx-background-color: #42593f;
+}
+.status {
+    -fx-font-size: 13px;
+    -fx-text-fill: #74685c;
+}

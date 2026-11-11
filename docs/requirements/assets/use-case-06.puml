@@ -1,0 +1,36 @@
+@startuml
+left to right direction
+skinparam monochrome true
+skinparam shadowing false
+actor "Chủ quán" as owner
+actor "Quản lý" as manager
+rectangle HomuCafe {
+  usecase "HC-UC-025\nQuản lý danh mục thực đơn" as uc_025
+  usecase "HC-UC-026\nQuản lý món và biến thể bán" as uc_026
+  usecase "HC-UC-027\nThiết lập công thức định lượng" as uc_027
+  usecase "HC-UC-029\nQuản lý nguyên liệu và đơn vị" as uc_029
+  usecase "HC-UC-030\nQuản lý nhà cung cấp" as uc_030
+  usecase "HC-UC-031\nLập phiếu nhập hàng nháp" as uc_031
+  usecase "HC-UC-032\nXác nhận nhập kho thực tế" as uc_032
+  usecase "HC-UC-033\nKiểm kê và điều chỉnh chênh lệch kho" as uc_033
+  usecase "HC-UC-034\nGhi nhận hao hụt hoặc hủy nguyên liệu" as uc_034
+}
+owner -- uc_025
+manager -- uc_025
+owner -- uc_026
+manager -- uc_026
+owner -- uc_027
+manager -- uc_027
+owner -- uc_029
+manager -- uc_029
+owner -- uc_030
+manager -- uc_030
+owner -- uc_031
+manager -- uc_031
+owner -- uc_032
+manager -- uc_032
+owner -- uc_033
+manager -- uc_033
+owner -- uc_034
+manager -- uc_034
+@enduml

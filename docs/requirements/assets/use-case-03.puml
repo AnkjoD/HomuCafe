@@ -1,0 +1,33 @@
+@startuml
+left to right direction
+skinparam monochrome true
+skinparam shadowing false
+actor "Chủ quán" as owner
+actor "Quản lý" as manager
+actor "Thu ngân" as cashier
+rectangle HomuCafe {
+  usecase "HC-UC-008\nTra cứu tình trạng bàn và đơn đang phục vụ" as uc_008
+  usecase "HC-UC-009\nLập đơn bán hàng" as uc_009
+  usecase "HC-UC-010\nĐiều chỉnh đơn chưa thanh toán" as uc_010
+  usecase "HC-UC-011\nGửi đợt món tới pha chế" as uc_011
+  usecase "HC-UC-012\nÁp dụng voucher cho đơn" as uc_012
+  usecase "HC-UC-028\nQuản lý khu vực và bàn" as uc_028
+}
+owner -- uc_008
+manager -- uc_008
+cashier -- uc_008
+owner -- uc_009
+manager -- uc_009
+cashier -- uc_009
+owner -- uc_010
+manager -- uc_010
+cashier -- uc_010
+owner -- uc_011
+manager -- uc_011
+cashier -- uc_011
+owner -- uc_012
+manager -- uc_012
+cashier -- uc_012
+owner -- uc_028
+manager -- uc_028
+@enduml

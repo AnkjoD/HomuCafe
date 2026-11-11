@@ -1,0 +1,49 @@
+name: Task
+description: Công việc có đầu ra và tiêu chí nghiệm thu rõ ràng
+title: "[Task] "
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Mục tiêu và phạm vi
+      description: Người dùng cần gì? Task này bao gồm những gì?
+    validations:
+      required: true
+  - type: input
+    id: use_cases
+    attributes:
+      label: Use case và quy tắc liên quan
+      description: Ghi mã HC-UC/BR; task chuẩn bị có thể ghi không áp dụng kèm lý do.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Tiêu chí nghiệm thu
+      description: Liệt kê kết quả quan sát/kiểm tra được, gồm trường hợp lỗi liên quan.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Phụ thuộc và phần dùng chung bị ảnh hưởng
+      description: Liên kết Issue/thiết kế; ghi không có nếu độc lập.
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: Người phụ trách chính
+      description: Điền GitHub username và gán Assignee khi đã thống nhất.
+  - type: input
+    id: target
+    attributes:
+      label: Hạn dự kiến
+      description: Chốt sau khi người làm ước lượng; không tự coi ngày đề xuất là cam kết.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Cách kiểm tra
+    validations:
+      required: true
