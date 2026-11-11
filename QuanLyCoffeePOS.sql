@@ -1,55 +1,75 @@
 -- ========================================================
--- ĐỒ ÁN: QUẢN LÝ BÁN HÀNG QUÁN COFFEE TỰ PHỤC VỤ (HOMUCAFE)
--- HỆ QUẢN TRỊ CƠ SỞ DỮ LIỆU: MICROSOFT SQL SERVER
--- CHUẨN HÓA DỮ LIỆU BẬC 3 (3NF) - 9 BẢNG QUAN HỆ CHẶT CHẼ
--- (TÍCH HỢP QUẢN LÝ 12 BÀN & NGHIỆP VỤ ĐẶT BÀN / TABLE MAP)
+-- CƠ SỞ DỮ LIỆU: QUẢN LÝ QUÁN CÀ PHÊ HOMUCAFE (POS & TABLE RESERVATION)
+-- HỆ QUẢN TRỊ CSDL: MICROSOFT SQL SERVER 2019 / 2022
+-- CHUẨN HÓA DỮ LIỆU: DẠNG CHUẨN 3 (3NF)
+-- ĐỒNG BỘ 1-1 VỚI CLASS DIAGRAM & ERD PHYSICAL MODEL (12 THỰC THỂ)
 -- ========================================================
 
-CREATE DATABASE QuanLyCoffeePOS;
+USE master;
 GO
 
-USE QuanLyCoffeePOS;
+IF EXISTS (SELECT name FROM sys.databases WHERE name = 'QuanLyCoffeePOS_HomuCafe')
+BEGIN
+    ALTER DATABASE QuanLyCoffeePOS_HomuCafe SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE QuanLyCoffeePOS_HomuCafe;
+END
 GO
 
--- 1. BẢNG CHỨC VỤ (Tách riêng theo chuẩn OOP)
+CREATE DATABASE QuanLyCoffeePOS_HomuCafe;
+GO
+
+USE QuanLyCoffeePOS_HomuCafe;
+GO
+
+-- ========================================================
+-- 1. BẢNG CHỨC VỤ
+-- ========================================================
 CREATE TABLE CHUC_VU (
     maChucVu NVARCHAR(10) PRIMARY KEY,
     tenChucVu NVARCHAR(50) NOT NULL
 );
 GO
 
+-- ========================================================
 -- 2. BẢNG NHÂN VIÊN
+-- ========================================================
 CREATE TABLE NHAN_VIEN (
     maNV NVARCHAR(10) PRIMARY KEY,
     hoTen NVARCHAR(100) NOT NULL,
-    soDienThoai VARCHAR(10) NOT NULL,
-    cccd VARCHAR(12) NOT NULL,
-    trangThaiLamViec BIT NOT NULL DEFAULT 1, -- 1: Đang làm, 0: Đã nghỉ
+    soDienThoai VARCHAR(10) NOT NULL UNIQUE,
+    cccd VARCHAR(12) NOT NULL UNIQUE,
+    trangThaiLamViec BIT NOT NULL DEFAULT 1,
     maChucVu NVARCHAR(10) NOT NULL FOREIGN KEY REFERENCES CHUC_VU(maChucVu)
 );
 GO
 
--- 3. BẢNG TÀI KHOẢN NGƯỜI DÙNG (Quan hệ 1-1 với NHAN_VIEN)
+-- ========================================================
+-- 3. BẢNG TÀI KHOẢN (Quan hệ 1-1 với NHAN_VIEN)
+-- ========================================================
 CREATE TABLE TAI_KHOAN (
-    tenDangNhap VARCHAR(50) PRIMARY KEY,
-    matKhau VARCHAR(255) NOT NULL,
-    phanQuyen VARCHAR(20) NOT NULL CHECK (phanQuyen IN ('ADMIN', 'STAFF')),
-    maNV NVARCHAR(10) NOT NULL UNIQUE FOREIGN KEY REFERENCES NHAN_VIEN(maNV)
+    tenDangNhap NVARCHAR(50) PRIMARY KEY,
+    matKhau NVARCHAR(255) NOT NULL,
+    phanQuyen NVARCHAR(20) NOT NULL CHECK (phanQuyen IN ('ADMIN', 'STAFF')),
+    maNV NVARCHAR(10) NOT NULL UNIQUE FOREIGN KEY REFERENCES NHAN_VIEN(maNV) ON DELETE CASCADE
 );
 GO
 
--- 4. BẢNG MÓN ĐỒ UỐNG (Gộp loaiMon trực tiếp)
+-- ========================================================
+-- 4. BẢNG MÓN ĐỒ UỐNG / BÁNH NGỌT
+-- ========================================================
 CREATE TABLE MON (
     maMon NVARCHAR(10) PRIMARY KEY,
     tenMon NVARCHAR(100) NOT NULL,
     donGiaGoc DECIMAL(18,2) NOT NULL CHECK (donGiaGoc > 0),
     hinhAnh NVARCHAR(255) NULL,
-    trangThai BIT NOT NULL DEFAULT 1, -- 1: Đang bán, 0: Ngừng bán (Xóa mềm)
-    loaiMon NVARCHAR(50) NOT NULL     -- Cà phê, Trà sữa, Đá xay...
+    trangThai BIT NOT NULL DEFAULT 1,
+    loaiMon NVARCHAR(50) NOT NULL
 );
 GO
 
+-- ========================================================
 -- 5. BẢNG KHÁCH HÀNG THÀNH VIÊN
+-- ========================================================
 CREATE TABLE KHACH_HANG (
     maKH NVARCHAR(10) PRIMARY KEY,
     hoTen NVARCHAR(100) NOT NULL,
@@ -58,13 +78,15 @@ CREATE TABLE KHACH_HANG (
 );
 GO
 
+-- ========================================================
 -- 6. BẢNG VOUCHER KHUYẾN MÃI
+-- ========================================================
 CREATE TABLE VOUCHER (
     maVoucher NVARCHAR(20) PRIMARY KEY,
     hinhThucGiam NVARCHAR(20) NOT NULL CHECK (hinhThucGiam IN (N'PHAN_TRAM', N'TIEN_MAT')),
     giaTriGiam DECIMAL(18,2) NOT NULL CHECK (giaTriGiam > 0),
-    giamToiDa DECIMAL(18,2) NOT NULL DEFAULT 0,
-    donToiThieu DECIMAL(18,2) NOT NULL DEFAULT 0,
+    giamToiDa DECIMAL(18,2) NOT NULL CHECK (giamToiDa >= 0),
+    donToiThieu DECIMAL(18,2) NOT NULL DEFAULT 0 CHECK (donToiThieu >= 0),
     soLuotDung INT NOT NULL DEFAULT 0,
     gioiHanLuot INT NOT NULL DEFAULT 100,
     ngayBatDau DATETIME NOT NULL DEFAULT GETDATE(),
@@ -73,7 +95,9 @@ CREATE TABLE VOUCHER (
 );
 GO
 
--- 7. BẢNG BÀN PHỤC VỤ (Quản lý sơ đồ 12 bàn & Nghiệp vụ Giữ/Đặt bàn trước)
+-- ========================================================
+-- 7. BẢNG BÀN PHỤC VỤ (12 bàn & Nghiệp vụ Giữ/Đặt bàn trước)
+-- ========================================================
 CREATE TABLE BAN (
     maBan NVARCHAR(10) PRIMARY KEY,
     tenBan NVARCHAR(50) NOT NULL,
@@ -82,25 +106,63 @@ CREATE TABLE BAN (
 );
 GO
 
--- 8. BẢNG HÓA ĐƠN
-CREATE TABLE HOA_DON (
-    maHD NVARCHAR(20) PRIMARY KEY,
-    soThuTuNgay INT NOT NULL,
-    ngayLap DATETIME NOT NULL DEFAULT GETDATE(),
-    soTheRung INT NULL CHECK (soTheRung BETWEEN 1 AND 99),
-    loaiDon NVARCHAR(20) NOT NULL CHECK (loaiDon IN (N'TAI_QUAN', N'MANG_DI')),
-    phuongThucThanhToan NVARCHAR(20) NOT NULL CHECK (phuongThucThanhToan IN (N'TIEN_MAT', N'VIETQR')),
-    giamGia DECIMAL(18,2) NOT NULL DEFAULT 0,
-    tongTien DECIMAL(18,2) NOT NULL CHECK (tongTien >= 0),
-    trangThaiDon NVARCHAR(30) NOT NULL CHECK (trangThaiDon IN (N'DANG_PHA_CHE', N'CHO_GIAO', N'HOAN_TAT', N'DA_HUY')),
-    maNV NVARCHAR(10) NOT NULL FOREIGN KEY REFERENCES NHAN_VIEN(maNV),
-    maKH NVARCHAR(10) NULL FOREIGN KEY REFERENCES KHACH_HANG(maKH),
-    maVoucher NVARCHAR(20) NULL FOREIGN KEY REFERENCES VOUCHER(maVoucher),
-    maBan NVARCHAR(10) NULL FOREIGN KEY REFERENCES BAN(maBan) -- Gán bàn phục vụ hoặc đặt bàn
+-- ========================================================
+-- 8. BẢNG PHƯƠNG THỨC THANH TOÁN (Tách riêng bảng theo góp ý GV)
+-- ========================================================
+CREATE TABLE PHUONG_THUC_THANH_TOAN (
+    maPhuongThuc NVARCHAR(10) PRIMARY KEY,
+    tenPhuongThuc NVARCHAR(50) NOT NULL,
+    trangThai BIT NOT NULL DEFAULT 1
 );
 GO
 
--- 9. BẢNG CHI TIẾT HÓA ĐƠN (Khóa chính kết hợp maHD, maMon; gộp đường, đá, topping vào ghiChu)
+-- ========================================================
+-- 9. BẢNG PHIẾU ĐẶT BÀN (Nghiệp vụ Đặt bàn trước)
+-- ========================================================
+CREATE TABLE PHIEU_DAT_BAN (
+    maPhieu NVARCHAR(20) PRIMARY KEY,
+    ngayDat DATETIME NOT NULL DEFAULT GETDATE(),
+    ngayDen DATETIME NOT NULL,
+    soLuongKhach INT NOT NULL CHECK (soLuongKhach > 0),
+    tienCoc DECIMAL(18,2) NOT NULL DEFAULT 0,
+    ghiChu NVARCHAR(255) NULL,
+    trangThai NVARCHAR(30) NOT NULL CHECK (trangThai IN (N'DA_DAT', N'DA_NHAN', N'DA_HUY')),
+    maKH NVARCHAR(10) NOT NULL FOREIGN KEY REFERENCES KHACH_HANG(maKH),
+    maNV NVARCHAR(10) NOT NULL FOREIGN KEY REFERENCES NHAN_VIEN(maNV)
+);
+GO
+
+-- ========================================================
+-- 10. BẢNG CHI TIẾT PHIẾU ĐẶT BÀN (Khóa chính kết hợp maPhieu, maBan)
+-- ========================================================
+CREATE TABLE CHI_TIET_PHIEU_DAT_BAN (
+    maPhieu NVARCHAR(20) NOT NULL FOREIGN KEY REFERENCES PHIEU_DAT_BAN(maPhieu) ON DELETE CASCADE,
+    maBan NVARCHAR(10) NOT NULL FOREIGN KEY REFERENCES BAN(maBan),
+    ghiChu NVARCHAR(255) NULL,
+    PRIMARY KEY (maPhieu, maBan)
+);
+GO
+
+-- ========================================================
+-- 11. BẢNG HÓA ĐƠN (Đã bỏ soThuTuNgay, soTheRung, tongTien; liên kết PHUONG_THUC_THANH_TOAN)
+-- ========================================================
+CREATE TABLE HOA_DON (
+    maHD NVARCHAR(20) PRIMARY KEY,
+    ngayLap DATETIME NOT NULL DEFAULT GETDATE(),
+    loaiDon NVARCHAR(20) NOT NULL CHECK (loaiDon IN (N'TAI_QUAN', N'MANG_DI')),
+    giamGia DECIMAL(18,2) NOT NULL DEFAULT 0,
+    trangThaiDon NVARCHAR(30) NOT NULL CHECK (trangThaiDon IN (N'DANG_PHA_CHE', N'CHO_GIAO', N'HOAN_TAT', N'DA_HUY')),
+    maBan NVARCHAR(10) NULL FOREIGN KEY REFERENCES BAN(maBan),
+    maNV NVARCHAR(10) NOT NULL FOREIGN KEY REFERENCES NHAN_VIEN(maNV),
+    maKH NVARCHAR(10) NULL FOREIGN KEY REFERENCES KHACH_HANG(maKH),
+    maVoucher NVARCHAR(20) NULL FOREIGN KEY REFERENCES VOUCHER(maVoucher),
+    maPhuongThuc NVARCHAR(10) NOT NULL FOREIGN KEY REFERENCES PHUONG_THUC_THANH_TOAN(maPhuongThuc)
+);
+GO
+
+-- ========================================================
+-- 12. BẢNG CHI TIẾT HÓA ĐƠN (Đã bỏ thanhTien; Khóa chính kết hợp maHD, maMon, kichCo)
+-- ========================================================
 CREATE TABLE CHI_TIET_HOA_DON (
     maHD NVARCHAR(20) NOT NULL FOREIGN KEY REFERENCES HOA_DON(maHD) ON DELETE CASCADE,
     maMon NVARCHAR(10) NOT NULL FOREIGN KEY REFERENCES MON(maMon),
@@ -108,7 +170,6 @@ CREATE TABLE CHI_TIET_HOA_DON (
     soLuong INT NOT NULL CHECK (soLuong > 0),
     donGiaThucTe DECIMAL(18,2) NOT NULL,
     ghiChu NVARCHAR(255) NULL,        -- Ghi chú mức đường/đá/topping tùy biến
-    thanhTien DECIMAL(18,2) NOT NULL CHECK (thanhTien > 0),
     PRIMARY KEY (maHD, maMon, kichCo) -- Khóa chính kết hợp chuẩn hóa mô hình dữ liệu quan hệ
 );
 GO
@@ -166,7 +227,7 @@ INSERT INTO VOUCHER (maVoucher, hinhThucGiam, giaTriGiam, giamToiDa, donToiThieu
 ('HOMU20', N'TIEN_MAT', 20000, 20000, 100000, 2, 50, '2026-01-01', '2026-12-31', 1),
 ('HOMUWELCOME', N'PHAN_TRAM', 15, 50000, 0, 12, 200, '2026-01-01', '2026-12-31', 1);
 
--- 7. Danh mục 12 Bàn phục vụ & Đặt bàn
+-- 7. Danh mục 12 Bàn phục vụ
 INSERT INTO BAN (maBan, tenBan, soChoNgoi, trangThai) VALUES 
 ('B01', N'Bàn 01', 4, N'DANG_PHUC_VU'),
 ('B02', N'Bàn 02', 2, N'TRONG'),
@@ -181,17 +242,33 @@ INSERT INTO BAN (maBan, tenBan, soChoNgoi, trangThai) VALUES
 ('B11', N'Bàn 11', 2, N'TRONG'),
 ('B12', N'Bàn 12', 6, N'DA_DAT');      -- Bàn được khách đặt trước
 
--- 8. Hóa đơn mẫu (Gán bàn và thẻ rung)
-INSERT INTO HOA_DON (maHD, soThuTuNgay, ngayLap, soTheRung, loaiDon, phuongThucThanhToan, giamGia, tongTien, trangThaiDon, maNV, maKH, maVoucher, maBan) VALUES 
-('HD20261104-001', 1, '2026-11-04 08:30:00', 5, N'TAI_QUAN', N'TIEN_MAT', 0, 74000, N'HOAN_TAT', 'NV01', 'KH0001', NULL, 'B03'),
-('HD20261104-002', 2, '2026-11-04 09:15:00', 8, N'MANG_DI', N'VIETQR', 10000, 90000, N'HOAN_TAT', 'NV01', 'KH0002', 'HOMU10', NULL),
-('HD20261104-003', 3, '2026-11-04 10:20:00', 12, N'TAI_QUAN', N'TIEN_MAT', 0, 102000, N'DANG_PHA_CHE', 'NV01', 'KH0003', NULL, 'B01');
+-- 8. Phương thức thanh toán
+INSERT INTO PHUONG_THUC_THANH_TOAN (maPhuongThuc, tenPhuongThuc, trangThai) VALUES 
+('PT01', N'Tiền mặt', 1),
+('PT02', N'Chuyển khoản (VietQR)', 1),
+('PT03', N'Ví điện tử (Momo/ZaloPay)', 1);
 
--- 9. Chi tiết hóa đơn mẫu
-INSERT INTO CHI_TIET_HOA_DON (maHD, maMon, kichCo, soLuong, donGiaThucTe, ghiChu, thanhTien) VALUES 
-('HD20261104-001', 'CF002', 'M', 1, 35000, N'50% đường, ít đá', 35000),
-('HD20261104-001', 'CF003', 'L', 1, 39000, N'Chuẩn vị', 39000),
-('HD20261104-002', 'TEA01', 'L', 2, 50000, N'70% đường, nhiều đào', 100000),
-('HD20261104-003', 'MILK01', 'M', 2, 45000, N'50% đường, 50% đá, trân châu đen', 90000),
-('HD20261104-003', 'CAKE02', 'S', 1, 35000, N'Hâm nóng', 35000);
+-- 9. Phiếu đặt bàn mẫu
+INSERT INTO PHIEU_DAT_BAN (maPhieu, ngayDat, ngayDen, soLuongKhach, tienCoc, ghiChu, trangThai, maKH, maNV) VALUES 
+('PDB001', '2026-11-04 08:00:00', '2026-11-04 18:30:00', 6, 100000, N'Họp mặt sinh nhật, cần chỗ yên tĩnh', N'DA_DAT', 'KH0001', 'NV01'),
+('PDB002', '2026-11-04 09:30:00', '2026-11-04 19:00:00', 6, 100000, N'Đặt bàn tiệc gia đình', N'DA_DAT', 'KH0002', 'NV01');
+
+-- 10. Chi tiết phiếu đặt bàn mẫu
+INSERT INTO CHI_TIET_PHIEU_DAT_BAN (maPhieu, maBan, ghiChu) VALUES 
+('PDB001', 'B04', N'Bàn 6 chỗ khu máy lạnh'),
+('PDB002', 'B12', N'Bàn 6 chỗ view cửa sổ');
+
+-- 11. Hóa đơn mẫu
+INSERT INTO HOA_DON (maHD, ngayLap, loaiDon, giamGia, trangThaiDon, maNV, maKH, maVoucher, maBan, maPhuongThuc) VALUES 
+('HD20261104-001', '2026-11-04 08:30:00', N'TAI_QUAN', 0, N'HOAN_TAT', 'NV01', 'KH0001', NULL, 'B03', 'PT01'),
+('HD20261104-002', '2026-11-04 09:15:00', N'MANG_DI', 10000, N'HOAN_TAT', 'NV01', 'KH0002', 'HOMU10', NULL, 'PT02'),
+('HD20261104-003', '2026-11-04 10:20:00', N'TAI_QUAN', 0, N'DANG_PHA_CHE', 'NV01', 'KH0003', NULL, 'B01', 'PT01');
+
+-- 12. Chi tiết hóa đơn mẫu (Không lưu thanhTien tính động)
+INSERT INTO CHI_TIET_HOA_DON (maHD, maMon, kichCo, soLuong, donGiaThucTe, ghiChu) VALUES 
+('HD20261104-001', 'CF002', 'M', 1, 35000, N'50% đường, ít đá'),
+('HD20261104-001', 'CF003', 'L', 1, 39000, N'Chuẩn vị'),
+('HD20261104-002', 'TEA01', 'L', 2, 50000, N'70% đường, nhiều đào'),
+('HD20261104-003', 'MILK01', 'M', 2, 45000, N'50% đường, 50% đá, trân châu đen'),
+('HD20261104-003', 'CAKE02', 'S', 1, 35000, N'Hâm nóng');
 GO

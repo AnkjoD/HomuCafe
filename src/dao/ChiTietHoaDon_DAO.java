@@ -23,7 +23,7 @@ public class ChiTietHoaDon_DAO {
         Connection con = ConnectDB.getConnection();
         if (con == null) return ds;
 
-        String sql = "SELECT ct.maHD, ct.maMon, ct.kichCo, ct.soLuong, ct.donGiaThucTe, ct.ghiChu, ct.thanhTien, " +
+        String sql = "SELECT ct.maHD, ct.maMon, ct.kichCo, ct.soLuong, ct.donGiaThucTe, ct.ghiChu, " +
                      "m.tenMon, m.donGiaGoc, m.hinhAnh, m.trangThai, m.loaiMon " +
                      "FROM CHI_TIET_HOA_DON ct " +
                      "INNER JOIN MON m ON ct.maMon = m.maMon " +
@@ -62,8 +62,8 @@ public class ChiTietHoaDon_DAO {
         Connection con = ConnectDB.getConnection();
         if (con == null) return false;
 
-        String sql = "INSERT INTO CHI_TIET_HOA_DON (maHD, maMon, kichCo, soLuong, donGiaThucTe, ghiChu, thanhTien) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO CHI_TIET_HOA_DON (maHD, maMon, kichCo, soLuong, donGiaThucTe, ghiChu) " +
+                     "VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, maHD);
             stmt.setString(2, ct.getMon() != null ? ct.getMon().getMaMon() : "CF001");
@@ -71,7 +71,6 @@ public class ChiTietHoaDon_DAO {
             stmt.setInt(4, ct.getSoLuong());
             stmt.setDouble(5, ct.getDonGiaThucTe());
             stmt.setString(6, ct.getGhiChu());
-            stmt.setDouble(7, ct.getThanhTien());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("Lỗi themChiTiet: " + e.getMessage());
@@ -79,3 +78,4 @@ public class ChiTietHoaDon_DAO {
         }
     }
 }
+

@@ -26,13 +26,15 @@ public class HoaDon_DAO {
         Connection con = ConnectDB.getConnection();
         if (con == null) return ds;
 
-        String sql = "SELECT hd.maHD, hd.soThuTuNgay, hd.ngayLap, hd.soTheRung, hd.loaiDon, " +
-                     "hd.phuongThucThanhToan, hd.giamGia, hd.tongTien, hd.trangThaiDon, hd.maBan, " +
+        String sql = "SELECT hd.maHD, hd.ngayLap, hd.loaiDon, " +
+                     "hd.giamGia, hd.trangThaiDon, hd.maBan, " +
+                     "ISNULL(pt.tenPhuongThuc, N'Tiền mặt') AS phuongThucThanhToan, " +
                      "nv.maNV, nv.hoTen AS tenNV, nv.soDienThoai AS sdtNV, nv.cccd AS cccdNV, nv.trangThaiLamViec, " +
                      "kh.maKH, kh.hoTen AS tenKH, kh.soDienThoai AS sdtKH, kh.diemTichLuy " +
                      "FROM HOA_DON hd " +
                      "INNER JOIN NHAN_VIEN nv ON hd.maNV = nv.maNV " +
                      "LEFT JOIN KHACH_HANG kh ON hd.maKH = kh.maKH " +
+                     "LEFT JOIN PHUONG_THUC_THANH_TOAN pt ON hd.maPhuongThuc = pt.maPhuongThuc " +
                      "ORDER BY hd.ngayLap DESC";
         try (PreparedStatement stmt = con.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
@@ -99,25 +101,26 @@ public class HoaDon_DAO {
             }
         }
 
-        String sql = "INSERT INTO HOA_DON (maHD, soThuTuNgay, ngayLap, soTheRung, loaiDon, phuongThucThanhToan, giamGia, tongTien, trangThaiDon, maNV, maKH, maVoucher, maBan) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String maPT = "PT01";
+        if (hd.getPhuongThucThanhToan() != null && hd.getPhuongThucThanhToan().contains("QR")) {
+            maPT = "PT02";
+        }
+
+        String sql = "INSERT INTO HOA_DON (maHD, ngayLap, loaiDon, giamGia, trangThaiDon, maNV, maKH, maVoucher, maBan, maPhuongThuc) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, hd.getMaHoaDon());
-            stmt.setInt(2, hd.getSoThuTuNgay() > 0 ? hd.getSoThuTuNgay() : 1);
-            stmt.setTimestamp(3, Timestamp.valueOf(hd.getNgayLap() != null ? hd.getNgayLap() : LocalDateTime.now()));
-            if (hd.getSoTheRung() > 0) stmt.setInt(4, hd.getSoTheRung());
-            else stmt.setNull(4, java.sql.Types.INTEGER);
-            stmt.setString(5, hd.getLoaiDon() != null ? hd.getLoaiDon() : "TAI_QUAN");
-            stmt.setString(6, hd.getPhuongThucThanhToan() != null ? hd.getPhuongThucThanhToan() : "TIEN_MAT");
-            stmt.setDouble(7, hd.getGiamGia());
-            stmt.setDouble(8, hd.getTongTien());
-            stmt.setString(9, hd.getTrangThaiDon() != null ? hd.getTrangThaiDon() : "DANG_PHA_CHE");
-            stmt.setString(10, hd.getNhanVien() != null ? hd.getNhanVien().getMaNV() : "NV01");
-            if (hd.getKhachHang() != null) stmt.setString(11, hd.getKhachHang().getMaKH());
-            else stmt.setNull(11, java.sql.Types.NVARCHAR);
-            stmt.setNull(12, java.sql.Types.NVARCHAR); // maVoucher
-            if (maBan != null) stmt.setString(13, maBan);
-            else stmt.setNull(13, java.sql.Types.NVARCHAR);
+            stmt.setTimestamp(2, Timestamp.valueOf(hd.getNgayLap() != null ? hd.getNgayLap() : LocalDateTime.now()));
+            stmt.setString(3, hd.getLoaiDon() != null ? hd.getLoaiDon() : "TAI_QUAN");
+            stmt.setDouble(4, hd.getGiamGia());
+            stmt.setString(5, hd.getTrangThaiDon() != null ? hd.getTrangThaiDon() : "DANG_PHA_CHE");
+            stmt.setString(6, hd.getNhanVien() != null ? hd.getNhanVien().getMaNV() : "NV01");
+            if (hd.getKhachHang() != null) stmt.setString(7, hd.getKhachHang().getMaKH());
+            else stmt.setNull(7, java.sql.Types.NVARCHAR);
+            stmt.setNull(8, java.sql.Types.NVARCHAR); // maVoucher
+            if (maBan != null) stmt.setString(9, maBan);
+            else stmt.setNull(9, java.sql.Types.NVARCHAR);
+            stmt.setString(10, maPT);
 
             int affected = stmt.executeUpdate();
             if (affected > 0) {

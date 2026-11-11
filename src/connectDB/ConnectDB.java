@@ -17,14 +17,20 @@ public class ConnectDB {
     }
 
     public void connect() {
-        String url = "jdbc:sqlserver://localhost:1433;databaseName=QuanLyCoffeePOS;trustServerCertificate=true";
+        String url1 = "jdbc:sqlserver://localhost:1433;databaseName=QuanLyCoffeePOS_HomuCafe;trustServerCertificate=true";
+        String url2 = "jdbc:sqlserver://localhost:1433;databaseName=QuanLyCoffeePOS;trustServerCertificate=true";
         String user = "sa";
         String password = "sapassword";
         try {
-            con = DriverManager.getConnection(url, user, password);
-            System.out.println("Kết nối SQL Server QuanLyCoffeePOS thành công!");
-        } catch (SQLException e) {
-            System.err.println("Chưa kết nối được SQL Server, ứng dụng sẽ chạy trên In-Memory DataStore: " + e.getMessage());
+            con = DriverManager.getConnection(url1, user, password);
+            System.out.println("Kết nối SQL Server QuanLyCoffeePOS_HomuCafe thành công!");
+        } catch (SQLException e1) {
+            try {
+                con = DriverManager.getConnection(url2, user, password);
+                System.out.println("Kết nối SQL Server QuanLyCoffeePOS thành công!");
+            } catch (SQLException e2) {
+                System.err.println("Chưa kết nối được SQL Server, ứng dụng sẽ chạy trên In-Memory DataStore: " + e2.getMessage());
+            }
         }
     }
 
