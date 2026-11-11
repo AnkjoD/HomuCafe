@@ -1,5 +1,10 @@
 # Quy định làm việc nhóm
 
+<<<<<<< HEAD
+## Nhận và thực hiện task
+
+- Mỗi task có một Issue, một người chịu trách nhiệm chính, đầu ra, tiêu chí nghiệm thu, phụ thuộc và hạn dự kiến.
+=======
 ## Quyền duyệt và merge — quy trình nhóm đã chọn
 
 Nhóm giữ repo private và dùng gói hiện tại, không yêu cầu nâng cấp trả phí. Các quy định dưới đây là cam kết làm việc; GitHub hiện chưa tự chặn người có quyền write bỏ qua chúng.
@@ -19,6 +24,7 @@ Collaborator có quyền write vẫn có khả năng kỹ thuật push/merge khi
 ## Nhận và thực hiện task
 
 - Mỗi task có một Issue, mã HC-UC/BR liên quan, một người chịu trách nhiệm chính, đầu ra, nghiệm thu và phụ thuộc. Hạn chỉ gán sau khi người làm xác nhận; không bịa deadline hoặc coi ước lượng là cam kết.
+>>>>>>> origin/main
 - Mỗi người ưu tiên một task đang làm. Báo sớm khi bị kẹt hoặc có nguy cơ trễ, kèm điều cần hỗ trợ.
 - Lấy code mới nhất từ `main`, tạo nhánh theo task: `feature/12-them-mon`, `fix/28-tong-tien`, `docs/7-luong-ban-hang`.
 - Không push trực tiếp vào `main` sau lần khởi tạo. Không force push hoặc xóa nhánh chung.
@@ -29,21 +35,37 @@ git switch main
 git pull --ff-only origin main
 git switch -c feature/12-them-mon
 # Làm việc, kiểm tra rồi chọn các file cần commit.
+<<<<<<< HEAD
+git add src/
+=======
 git add <duong-dan-file-thuoc-task>
+>>>>>>> origin/main
 git commit -m "feat(menu): add product form"
 git push -u origin feature/12-them-mon
 ```
 
+<<<<<<< HEAD
+Sau đó mở PR trên GitHub, liên kết `Closes #12`, chọn người review. Nếu nhánh bị xung đột, cập nhật `main` vào nhánh của mình và phối hợp với người sửa phần liên quan; không chọn ghi đè toàn bộ cho nhanh.
+=======
 Sau đó mở PR trên GitHub, liên kết `Closes #12`, yêu cầu `AnkjoD` review. Nếu nhánh bị xung đột, cập nhật `main` vào nhánh của mình và phối hợp với người sửa phần liên quan; không chọn ghi đè toàn bộ cho nhanh.
+>>>>>>> origin/main
 
 ## Review và hoàn thành
 
 - PR tập trung vào một thay đổi liên quan; ghi cách kiểm tra và kèm ảnh/video khi đổi giao diện.
+<<<<<<< HEAD
+- Cần ít nhất một người khác review: kiểm tra yêu cầu, nghiệp vụ, lỗi có thể xảy ra và khả năng chạy.
+- Chạy `mvnw.cmd clean verify` trên Windows hoặc `./mvnw clean verify` trên macOS/Linux. Kiểm tra thủ công luồng giao diện liên quan; thêm test cho nghiệp vụ đáng kiểm chứng.
+- Chỉ merge khi đã xử lý góp ý bắt buộc và kiểm tra tự động thành công. Ưu tiên Squash and merge, xóa nhánh task sau khi ghép.
+- Task Done khi đáp ứng nghiệm thu, đã merge và kiểm tra được trong ứng dụng chung. Có thể mở Draft PR sớm để xin góp ý.
+- Review luân phiên; trưởng nhóm điều phối chứ không phải người duy nhất kiểm tra mọi phần.
+=======
 - Reviewer kiểm tra yêu cầu, nghiệp vụ, lỗi có thể xảy ra và khả năng chạy; người phê duyệt thực hiện theo mục Quyền duyệt và merge bên trên.
 - Chạy `mvnw.cmd clean verify` trên Windows hoặc `./mvnw clean verify` trên macOS/Linux. Kiểm tra thủ công luồng giao diện liên quan; thêm test cho nghiệp vụ đáng kiểm chứng.
 - Chỉ merge khi đã xử lý góp ý bắt buộc và kiểm tra tự động thành công. Ưu tiên Squash and merge, xóa nhánh task sau khi ghép.
 - Task Done khi đáp ứng nghiệm thu, đã merge và kiểm tra được trong ứng dụng chung. Có thể mở Draft PR sớm để xin góp ý.
 - Các thành viên luân phiên hỗ trợ review; trưởng nhóm giữ trách nhiệm phê duyệt PR của thành viên và điều phối merge.
+>>>>>>> origin/main
 
 ## Quy ước code và dữ liệu
 
@@ -51,7 +73,11 @@ Sau đó mở PR trên GitHub, liên kết `Closes #12`, yêu cầu `AnkjoD` rev
 - Tên class dùng PascalCase; biến/phương thức dùng camelCase; package chữ thường; tên code tiếng Anh, giao diện tiếng Việt. File UTF-8, Java thụt 4 dấu cách.
 - Controller xử lý tương tác và cập nhật giao diện. Service xử lý nghiệp vụ. Repository truy cập dữ liệu. Không đặt SQL trong Controller.
 - Giá tiền dùng `BigDecimal`. Quy tắc làm tròn, giảm giá, hủy đơn và thanh toán phải được ghi rõ trước khi triển khai.
+<<<<<<< HEAD
+- Tác vụ database, mạng và AI chạy ngoài luồng giao diện JavaFX; cập nhật UI trên luồng JavaFX.
+=======
 - Tác vụ database, mạng, in/xuất file lâu và AI chạy ngoài Swing EDT; cập nhật thành phần Swing trên EDT. Không chặn EDT để chờ kết quả tác vụ dài.
+>>>>>>> origin/main
 - Thay đổi database phải có script có thứ tự và hướng dẫn cập nhật; không chỉ sửa database riêng trên máy.
 - Khi sửa cấu hình chung, điều hướng hoặc file nhiều người cùng dùng, báo nhóm và ghi tác động trong PR.
 - Không commit mật khẩu, khóa API, dữ liệu khách hàng thật, file build hoặc đường dẫn riêng của máy. Cung cấp cấu hình mẫu không chứa bí mật khi cần.
@@ -62,6 +88,8 @@ Sau đó mở PR trên GitHub, liên kết `Closes #12`, yêu cầu `AnkjoD` rev
 - Cập nhật Issue khi đổi trạng thái, phát hiện trở ngại hoặc thay đổi yêu cầu.
 - Mỗi tuần demo bản chung ít nhất một lần. Các quyết định quan trọng được ghi trong `docs/decisions/` và liên kết Issue liên quan.
 - Đánh giá đóng góp qua đầu ra, chất lượng, review và phối hợp; không chỉ đếm số commit.
+<<<<<<< HEAD
+=======
 
 
 ## Điều kiện Ready và Done
@@ -74,3 +102,4 @@ Sau đó mở PR trên GitHub, liên kết `Closes #12`, yêu cầu `AnkjoD` rev
 - Chỉ stage file thuộc task; xem diff trước commit. Không gom file người khác đang làm, bài học cá nhân, secret, database thật hoặc file build.
 - Test/CI phải được mô tả đúng: `verify` hiện chủ yếu biên dịch/đóng gói khi chưa có test nghiệp vụ. Số tiêu chí trong use case là kế hoạch nghiệm thu, không phải số test đã pass.
 - Task chỉ Done sau nghiệm thu, review/Approve, merge và kiểm tra bản chung; không tự merge PR của mình để rút ngắn quy trình.
+>>>>>>> origin/main
