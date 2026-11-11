@@ -1,0 +1,34 @@
+# Compiled class files
+*.class
+bin/
+target/
+
+# Package Files (keep lib jars)
+*.jar
+*.war
+*.zip
+*.tar.gz
+!lib/*.jar
+
+# Log & temp files
+*.log
+sources.txt
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE configs
+.idea/
+*.iml
+*.iws
+out/
+.settings/
+.project
+.classpath
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+

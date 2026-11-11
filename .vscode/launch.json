@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Chạy HomuCafe",
+            "request": "launch",
+            "mainClass": "com.homucafe.app.SwingLauncher",
+            "projectName": "HomuCafe-main"
+        },
+        {
+            "type": "java",
+            "name": "Chạy App (Entry Point)",
+            "request": "launch",
+            "mainClass": "App",
+            "projectName": "HomuCafe-main"
+        }
+    ]
+}
