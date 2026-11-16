@@ -9,6 +9,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionListener;
@@ -87,7 +88,7 @@ public class PanelBanHangPOS extends JPanel {
 
         // Bên phải: Hóa đơn & Giỏ hàng POS
         JPanel billPanel = Theme.surface(new BorderLayout(0, 10));
-        billPanel.setPreferredSize(new Dimension(410, 0));
+        billPanel.setPreferredSize(new Dimension(460, 0));
         billPanel.setBorder(new EmptyBorder(14, 14, 14, 14));
 
         JComboBox<String> cbTable = new JComboBox<>(new String[]{
@@ -100,10 +101,10 @@ public class PanelBanHangPOS extends JPanel {
         JComboBox<String> cbPager = new JComboBox<>();
         Runnable refreshPagers = () -> {
             cbPager.removeAllItems();
-            cbPager.addItem("Không gán thẻ rung (Mang đi)");
+            cbPager.addItem("Không gán thẻ rung");
             for (int i = 1; i <= DataStore.TONG_SO_THE_RUNG; i++) {
                 boolean busy = DataStore.isTheRungDangBan(i);
-                cbPager.addItem(String.format("Thẻ rung #%02d %s", i, busy ? "(Đang bận)" : "· Sẵn sàng"));
+                cbPager.addItem(String.format("Thẻ #%02d %s", i, busy ? "(Bận)" : "· Sẵn sàng"));
             }
             int goiy = DataStore.goiYTheRungTiepTheo();
             cbPager.setSelectedIndex(goiy);
@@ -111,11 +112,12 @@ public class PanelBanHangPOS extends JPanel {
         refreshPagers.run();
 
         // Nhận diện khách hàng & Tích điểm & Hạng VIP
-        JTextField txtCustomerPhone = new JTextField(11);
-        txtCustomerPhone.putClientProperty("JTextField.placeholderText", "SĐT khách thành viên");
+        JTextField txtCustomerPhone = new JTextField();
+        txtCustomerPhone.putClientProperty("JTextField.placeholderText", "SĐT khách thành viên...");
+        txtCustomerPhone.putClientProperty("FlatLaf.style", "arc: 8");
         JLabel lblCustomerInfo = Theme.label("Khách vãng lai (Chưa tích điểm)", 11, Theme.MUTED);
         final KhachHang[] activeCustomer = {null};
-        JCheckBox chkDungDiem = new JCheckBox("Dùng điểm (1 điểm = 1.000 đ, tối đa 50%)");
+        JCheckBox chkDungDiem = new JCheckBox("Dùng điểm (1 điểm = 1k, max 50%)");
         chkDungDiem.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         chkDungDiem.setOpaque(false);
         chkDungDiem.setEnabled(false);
@@ -134,15 +136,42 @@ public class PanelBanHangPOS extends JPanel {
         final double[] loyaltyDiscount = {0};
         final Voucher[] activeVoucher = {null};
 
-        String[] cartCols = {"MÓN & SIZE", "SL", "TIỀN"};
+        String[] cartCols = {"TÊN MÓN & TÙY CHỌN (SIZE, ĐƯỜNG, ĐÁ, TOPPING)", "SL", "TIỀN"};
         DefaultTableModel cartModel = new DefaultTableModel(cartCols, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
-        JTable tableCart = Theme.table(cartCols, new Object[0][]);
-        tableCart.setModel(cartModel);
-        tableCart.getColumnModel().getColumn(0).setPreferredWidth(185);
-        tableCart.getColumnModel().getColumn(1).setPreferredWidth(35);
-        tableCart.getColumnModel().getColumn(2).setPreferredWidth(90);
+        JTable tableCart = new JTable(cartModel);
+        tableCart.setRowHeight(44);
+        tableCart.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tableCart.setShowVerticalLines(false);
+        tableCart.setShowHorizontalLines(true);
+        tableCart.setGridColor(new Color(236, 240, 234));
+        tableCart.setBackground(Theme.WHITE);
+        tableCart.setForeground(Theme.INK);
+        tableCart.setSelectionBackground(Theme.PALE);
+        tableCart.setSelectionForeground(Theme.INK);
+        tableCart.setFillsViewportHeight(true);
+        tableCart.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tableCart.getTableHeader().setReorderingAllowed(false);
+        tableCart.getTableHeader().setPreferredSize(new Dimension(0, 32));
+        tableCart.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 11));
+        tableCart.getTableHeader().setBackground(new Color(244, 246, 240));
+        tableCart.getTableHeader().setForeground(Theme.INK);
+
+        tableCart.getColumnModel().getColumn(0).setPreferredWidth(270);
+        tableCart.getColumnModel().getColumn(1).setPreferredWidth(40);
+        tableCart.getColumnModel().getColumn(2).setPreferredWidth(95);
+
+        DefaultTableCellRenderer centerRender = new DefaultTableCellRenderer();
+        centerRender.setHorizontalAlignment(SwingConstants.CENTER);
+        centerRender.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tableCart.getColumnModel().getColumn(1).setCellRenderer(centerRender);
+
+        DefaultTableCellRenderer rightRender = new DefaultTableCellRenderer();
+        rightRender.setHorizontalAlignment(SwingConstants.RIGHT);
+        rightRender.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        rightRender.setForeground(Theme.GREEN);
+        tableCart.getColumnModel().getColumn(2).setCellRenderer(rightRender);
 
         JLabel lblSubtotal = Theme.label("Tổng tiền: 0 đ", 13, Theme.INK);
         JLabel lblDiscount = Theme.label("Giảm giá (VIP + Voucher + Điểm): 0 đ", 12, Theme.MUTED);
@@ -152,8 +181,25 @@ public class PanelBanHangPOS extends JPanel {
         Runnable refreshCartTable = () -> {
             cartModel.setRowCount(0);
             for (ChiTietHoaDon ct : currentOrderItems) {
+                String duong = ct.getMucDuong() + "% đường";
+                String da = switch (ct.getMucDa()) {
+                    case "IT_DA" -> "Ít đá";
+                    case "KHONG_DA" -> "Không đá";
+                    case "NONG" -> "Nóng";
+                    default -> "Đá chuẩn";
+                };
+                String top = (ct.getGhiChuTopping() != null && !ct.getGhiChuTopping().isBlank())
+                        ? " · " + ct.getGhiChuTopping() : "";
+                String optDesc = duong + " · " + da + top;
+
+                String displayHtml = "<html><body style='padding:2px 0; font-family: Segoe UI;'>"
+                        + "<b style='color:#243d35; font-size:12px;'>" + ct.getMon().getTenMon() + "</b> "
+                        + "<span style='color:#285747; font-weight:bold;'>(Size " + ct.getKichCo().name() + ")</span><br>"
+                        + "<span style='color:#737f74; font-size:10px;'>↳ " + optDesc + "</span>"
+                        + "</body></html>";
+
                 cartModel.addRow(new Object[]{
-                        ct.getMon().getTenMon() + " (" + ct.getKichCo().name() + ")",
+                        displayHtml,
                         ct.getSoLuong(),
                         String.format("%,.0f đ", ct.getThanhTien())
                 });
@@ -233,31 +279,54 @@ public class PanelBanHangPOS extends JPanel {
             recalculate.run();
         });
 
-        JPanel pnlCust = new JPanel(new BorderLayout(4, 2));
-        pnlCust.setOpaque(false);
-        pnlCust.add(Theme.row(txtCustomerPhone, btnLookupCustomer), BorderLayout.NORTH);
-        pnlCust.add(Theme.stack(2, lblCustomerInfo, chkDungDiem), BorderLayout.SOUTH);
+        // Topbar Bill Header gọn gàng
+        JPanel pnlHeaderTop = new JPanel(new BorderLayout());
+        pnlHeaderTop.setOpaque(false);
+        pnlHeaderTop.add(Theme.row(Theme.label("HÓA ĐƠN POS", 12, Theme.GREEN), Theme.label(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")), 11, Theme.MUTED)), BorderLayout.WEST);
 
         JPanel pnlHoldBar = new JPanel(new GridLayout(1, 2, 6, 0));
         pnlHoldBar.setOpaque(false);
         pnlHoldBar.add(btnGiuDon);
         pnlHoldBar.add(btnDanhSachDonGiu);
+        pnlHeaderTop.add(pnlHoldBar, BorderLayout.EAST);
+
+        JPanel pnlTablePager = new JPanel(new GridLayout(1, 2, 6, 0));
+        pnlTablePager.setOpaque(false);
+        pnlTablePager.add(cbTable);
+        pnlTablePager.add(cbPager);
+
+        JPanel pnlCustInput = new JPanel(new BorderLayout(6, 0));
+        pnlCustInput.setOpaque(false);
+        pnlCustInput.add(txtCustomerPhone, BorderLayout.CENTER);
+        pnlCustInput.add(btnLookupCustomer, BorderLayout.EAST);
+
+        JPanel pnlCust = new JPanel(new BorderLayout(0, 3));
+        pnlCust.setOpaque(false);
+        pnlCust.add(pnlCustInput, BorderLayout.NORTH);
+        pnlCust.add(Theme.row(lblCustomerInfo, chkDungDiem), BorderLayout.SOUTH);
 
         JPanel pnlBillHeader = Theme.stack(6,
-                Theme.row(Theme.label("HÓA ĐƠN POS", 11, Theme.MUTED), Theme.label(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")), 11, Theme.MUTED)),
-                cbTable,
-                cbPager,
-                pnlCust,
-                pnlHoldBar
+                pnlHeaderTop,
+                pnlTablePager,
+                pnlCust
         );
         billPanel.add(pnlBillHeader, BorderLayout.NORTH);
 
         // Thanh công cụ thao tác giỏ hàng (+1 SL, -1 SL, Sửa tùy chọn, Tách bill, Xóa món)
-        JButton btnTangSL = Theme.button("+1", false);
-        JButton btnGiamSL = Theme.button("-1", false);
-        JButton btnSuaTuyChon = Theme.button("Sửa", false);
+        JButton btnTangSL = Theme.button("+1 SL", false);
+        btnTangSL.setToolTipText("Tăng 1 ly cho món đang chọn trong giỏ");
+
+        JButton btnGiamSL = Theme.button("-1 SL", false);
+        btnGiamSL.setToolTipText("Giảm 1 ly cho món đang chọn trong giỏ");
+
+        JButton btnSuaTuyChon = Theme.button("Sửa món", false);
+        btnSuaTuyChon.setToolTipText("Mở lại bảng tùy biến để sửa Size, Đường, Đá, Topping món này");
+
         JButton btnTachBill = Theme.button("Tách bill", false);
-        JButton btnXoaMon = Theme.button("Xóa", false);
+        btnTachBill.setToolTipText("Tách một phần món trong giỏ sang hóa đơn khác để thanh toán trước");
+
+        JButton btnXoaMon = Theme.button("Xóa món", false);
+        btnXoaMon.setToolTipText("Xóa món đang chọn khỏi giỏ hàng");
 
         btnTangSL.addActionListener(e -> {
             int row = tableCart.getSelectedRow();
@@ -599,10 +668,30 @@ public class PanelBanHangPOS extends JPanel {
         pnlCartToolbar.add(btnTachBill);
         pnlCartToolbar.add(btnXoaMon);
 
+        JScrollPane scrollCart = new JScrollPane(tableCart);
+        scrollCart.setBorder(BorderFactory.createLineBorder(Theme.LINE, 1, true));
+        scrollCart.getViewport().setBackground(Theme.WHITE);
+
+        JLabel lblCartTitle = Theme.label("GIỎ HÀNG · CHI TIẾT MÓN ĐÃ CHỌN", 11, Theme.INK);
+        lblCartTitle.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        JLabel lblCartTip = Theme.label("(Chọn món để + / - / Sửa / Tách)", 10, Theme.MUTED);
+
+        JPanel pnlCartHeader = new JPanel(new BorderLayout());
+        pnlCartHeader.setOpaque(false);
+        pnlCartHeader.add(lblCartTitle, BorderLayout.WEST);
+        pnlCartHeader.add(lblCartTip, BorderLayout.EAST);
+
+        JPanel pnlCartBottom = new JPanel(new BorderLayout(0, 4));
+        pnlCartBottom.setOpaque(false);
+        pnlCartBottom.add(Theme.label("Thao tác dòng món đang chọn trong giỏ:", 10, Theme.MUTED), BorderLayout.NORTH);
+        pnlCartBottom.add(pnlCartToolbar, BorderLayout.CENTER);
+
         JPanel pnlCartCenter = new JPanel(new BorderLayout(0, 6));
         pnlCartCenter.setOpaque(false);
-        pnlCartCenter.add(Theme.tablePanel("Chi tiết món đặt", tableCart), BorderLayout.CENTER);
-        pnlCartCenter.add(pnlCartToolbar, BorderLayout.SOUTH);
+        pnlCartCenter.add(pnlCartHeader, BorderLayout.NORTH);
+        pnlCartCenter.add(scrollCart, BorderLayout.CENTER);
+        pnlCartCenter.add(pnlCartBottom, BorderLayout.SOUTH);
+
         billPanel.add(pnlCartCenter, BorderLayout.CENTER);
 
         // Render danh sách món nước
@@ -904,7 +993,7 @@ public class PanelBanHangPOS extends JPanel {
             }
         });
 
-        JPanel summary = Theme.stack(8,
+        JPanel summary = Theme.stack(6,
                 Theme.label("MÃ VOUCHER / ƯU ĐÃI", 10, Theme.MUTED),
                 pnlVoucherRow,
                 lblSubtotal,
@@ -914,7 +1003,7 @@ public class PanelBanHangPOS extends JPanel {
         );
         summary.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, Theme.LINE),
-                new EmptyBorder(12, 0, 0, 0)
+                new EmptyBorder(10, 0, 0, 0)
         ));
 
         billPanel.add(summary, BorderLayout.SOUTH);
