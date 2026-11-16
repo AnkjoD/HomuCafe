@@ -669,6 +669,8 @@ public class PanelBanHangPOS extends JPanel {
         pnlCartToolbar.add(btnXoaMon);
 
         JScrollPane scrollCart = new JScrollPane(tableCart);
+        scrollCart.setPreferredSize(new Dimension(440, 220));
+        scrollCart.setMinimumSize(new Dimension(380, 150));
         scrollCart.setBorder(BorderFactory.createLineBorder(Theme.LINE, 1, true));
         scrollCart.getViewport().setBackground(Theme.WHITE);
 
