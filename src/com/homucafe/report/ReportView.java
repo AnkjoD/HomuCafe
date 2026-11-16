@@ -33,8 +33,8 @@ public final class ReportView extends JPanel {
     private final JComboBox<String> timeFilter = new JComboBox<>(new String[]{
             "Hôm nay", "7 ngày qua", "Tháng này", "Tất cả"
     });
-    private final JButton btnExportCSV = Theme.button("📥 Xuất báo cáo CSV (Excel)", true);
-    private final JButton btnInKetCa = Theme.button("🖨 In báo cáo kết ca", false);
+    private final JButton btnExportCSV = Theme.button("Xuất báo cáo CSV (Excel)", true);
+    private final JButton btnInKetCa = Theme.button("In báo cáo kết ca", false);
 
     private final JPanel pnlOverviewContainer = new JPanel(new BorderLayout());
     private final JPanel pnlSalesContainer = new JPanel(new BorderLayout());

@@ -7,8 +7,11 @@ import com.homucafe.util.DataStore;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.time.Duration;
@@ -635,13 +638,13 @@ final class SampleScreens {
                 double tienThoi = 0;
 
                 if (choice == 0) {
-                    String inputCash = JOptionPane.showInputDialog(page, "Nhập số tiền khách đưa:", String.format("%.0f", finalPrice));
-                    if (inputCash != null) {
-                        try {
-                            tienKhachDua = Double.parseDouble(inputCash.replace(".", "").trim());
-                            tienThoi = Math.max(0, tienKhachDua - finalPrice);
-                        } catch (Exception ignored) { }
+                    Window win = SwingUtilities.getWindowAncestor(page);
+                    double[] cashResult = showQuickCashDialog(win, finalPrice);
+                    if (cashResult == null) {
+                        return; // Người dùng hủy thu tiền
                     }
+                    tienKhachDua = cashResult[0];
+                    tienThoi = cashResult[1];
                 } else {
                     // Hiển thị Dialog VietQR
                     Window win = SwingUtilities.getWindowAncestor(page);
@@ -892,7 +895,7 @@ final class SampleScreens {
                                 }
                             }
                         } else if ("DANG_PHUC_VU".equalsIgnoreCase(status)) {
-                            String[] opts = {"Mở bán hàng POS", "Dọn bàn / Trả bàn trống", "Đóng"};
+                            String[] opts = {"Mở bán hàng POS", "Chuyển / Gộp bàn", "Dọn bàn / Trả bàn trống", "Đóng"};
                             int choice = JOptionPane.showOptionDialog(page,
                                     "Bàn " + String.format("%02d", banSo) + " đang phục vụ khách. Bạn muốn thực hiện thao tác nào?",
                                     "Quản lý Bàn " + String.format("%02d", banSo),
@@ -900,6 +903,32 @@ final class SampleScreens {
                             if (choice == 0) {
                                 selectPOSTable(String.format("Bàn %02d", banSo));
                             } else if (choice == 1) {
+                                List<String> targetChoices = new ArrayList<>();
+                                for (int dest = 1; dest <= DataStore.TONG_SO_BAN; dest++) {
+                                    if (dest == banSo) continue;
+                                    Ban dbBan = DataStore.timBanTheoSo(dest);
+                                    String destSt = dbBan != null ? dbBan.getTrangThai() : DataStore.getTrangThaiBan().getOrDefault(dest, "TRONG");
+                                    if ("DA_DAT".equalsIgnoreCase(destSt)) continue;
+                                    String hint = "TRONG".equalsIgnoreCase(destSt) ? "Trống (Chuyển bàn)" : "Đang phục vụ (Gộp bàn)";
+                                    targetChoices.add(String.format("Bàn %02d - %s", dest, hint));
+                                }
+                                if (targetChoices.isEmpty()) {
+                                    JOptionPane.showMessageDialog(page, "Không còn bàn phù hợp để chuyển hoặc gộp!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                                } else {
+                                    String picked = (String) JOptionPane.showInputDialog(page,
+                                            "Chọn bàn đích để chuyển / gộp từ Bàn " + String.format("%02d", banSo) + ":",
+                                            "Chuyển / Gộp bàn",
+                                            JOptionPane.QUESTION_MESSAGE, null,
+                                            targetChoices.toArray(new String[0]), targetChoices.get(0));
+                                    if (picked != null) {
+                                        int destBan = Integer.parseInt(picked.split(" - ")[0].replaceAll("[^0-9]", ""));
+                                        int movedOrders = DataStore.chuyenHoacGopBan(banSo, destBan);
+                                        JOptionPane.showMessageDialog(page,
+                                                String.format("Đã chuyển Bàn %02d sang Bàn %02d thành công! (Đã cập nhật %d đơn liên quan)", banSo, destBan, movedOrders),
+                                                "Chuyển / Gộp bàn thành công", JOptionPane.INFORMATION_MESSAGE);
+                                    }
+                                }
+                            } else if (choice == 2) {
                                 DataStore.setTrangThaiBan(banSo, "TRONG");
                                 JOptionPane.showMessageDialog(page, "Đã dọn bàn và đổi Bàn " + String.format("%02d", banSo) + " về trạng thái TRỐNG!", "Trả bàn thành công", JOptionPane.INFORMATION_MESSAGE);
                             }
@@ -929,30 +958,9 @@ final class SampleScreens {
         JPanel body = new JPanel(new BorderLayout(0, 12));
         body.setOpaque(false);
 
-        // Header toolbar: Nút báo hết món nhanh (86)
-        JButton btnBaoHetMon = Theme.button("⚡ Báo hết món nhanh (86)", false);
-        btnBaoHetMon.addActionListener(e -> {
-            List<Mon> dsMon = DataStore.getDsMon();
-            String[] monNames = new String[dsMon.size()];
-            for (int i = 0; i < dsMon.size(); i++) {
-                Mon m = dsMon.get(i);
-                monNames[i] = m.getMaMon() + " - " + m.getTenMon() + (m.isDangKinhDoanh() ? " (Đang bán)" : " [TẠM HẾT 86]");
-            }
-            String selected = (String) JOptionPane.showInputDialog(page,
-                    "Chọn món để BẬT / TẮT trạng thái hết nguyên liệu (86):\n(Món tạm hết sẽ bị khóa trên màn hình Bán hàng)",
-                    "Báo hết món nhanh (86)", JOptionPane.QUESTION_MESSAGE, null, monNames, monNames[0]);
-            if (selected != null) {
-                String ma = selected.split(" - ")[0];
-                Mon m = DataStore.timMonTheoMa(ma);
-                if (m != null) {
-                    m.setDangKinhDoanh(!m.isDangKinhDoanh());
-                    DataStore.saveMon(m);
-                    DataStore.notifyDataChanged();
-                    String ttStr = m.isDangKinhDoanh() ? "ĐANG BÁN TRỞ LẠI" : "TẠM HẾT (86)";
-                    JOptionPane.showMessageDialog(page, "Đã cập nhật món " + m.getTenMon() + " sang trạng thái: " + ttStr, "Cập nhật thành công", JOptionPane.INFORMATION_MESSAGE);
-                }
-            }
-        });
+        // Header toolbar: Nút báo hết món nhanh (86) có tìm kiếm & lọc nhóm
+        JButton btnBaoHetMon = Theme.button("Báo hết món nhanh (86)", false);
+        btnBaoHetMon.addActionListener(e -> showQuick86Dialog(SwingUtilities.getWindowAncestor(page)));
 
         JPanel topBar = new JPanel(new BorderLayout());
         topBar.setOpaque(false);
@@ -995,10 +1003,10 @@ final class SampleScreens {
                 JLabel lblWarning = null;
                 if ("DANG_PHA_CHE".equals(hd.getTrangThaiDon())) {
                     if (phutCho > 10) {
-                        lblWarning = Theme.label("⚠ ƯU TIÊN GẤP: Đã chờ hơn " + phutCho + " phút!", 11, new Color(220, 38, 38));
+                        lblWarning = Theme.label("[!] ƯU TIÊN GẤP: Đã chờ hơn " + phutCho + " phút!", 11, new Color(220, 38, 38));
                         card.setBackground(new Color(254, 242, 242)); // Đỏ nhạt
                     } else if (phutCho >= 5) {
-                        lblWarning = Theme.label("⏱ SẮP TRỄ: Đã chờ " + phutCho + " phút", 11, new Color(217, 119, 6));
+                        lblWarning = Theme.label("[!] SẮP TRỄ: Đã chờ " + phutCho + " phút", 11, new Color(217, 119, 6));
                         card.setBackground(new Color(255, 251, 235)); // Vàng cam
                     } else {
                         card.setBackground(Theme.WHITE);
@@ -1028,7 +1036,7 @@ final class SampleScreens {
                         hd.setTrangThaiDon("CHO_GIAO");
                         DataStore.saveTrangThaiHoaDon(hd.getMaHoaDon(), "CHO_GIAO");
                         JOptionPane.showMessageDialog(page,
-                                "✨ ĐÃ BẬT BÁO RUNG THẺ #" + hd.getSoTheRung() + "!\nKhách hàng đang di chuyển tới quầy nhận nước.",
+                                "ĐÃ BẬT BÁO RUNG THẺ #" + hd.getSoTheRung() + "!\nKhách hàng đang di chuyển tới quầy nhận nước.",
                                 "Kích hoạt thẻ rung", JOptionPane.INFORMATION_MESSAGE);
                     });
                     card.add(ticketHeader, BorderLayout.NORTH);
@@ -1038,7 +1046,7 @@ final class SampleScreens {
                     pnlChoPha.add(Box.createVerticalStrut(12));
                 } else if ("CHO_GIAO".equals(hd.getTrangThaiDon())) {
                     card.setBackground(Theme.PALE);
-                    JButton btnDone = Theme.button("✔ Đã giao khách & Thu hồi thẻ", false);
+                    JButton btnDone = Theme.button("✓ Đã giao khách & Thu hồi thẻ", false);
                     btnDone.addActionListener(e -> {
                         hd.setTrangThaiDon("HOAN_TAT");
                         DataStore.saveTrangThaiHoaDon(hd.getMaHoaDon(), "HOAN_TAT");
@@ -1091,37 +1099,109 @@ final class SampleScreens {
      * ------------------------------------------------------------- */
     private static JPanel invoices() {
         JPanel page = Theme.page("Quản lý hóa đơn", "Tra cứu & in ấn hóa đơn.",
-                "Theo dõi lịch sử hóa đơn · In lại hóa đơn 80mm & tem dán ly · Hủy hóa đơn có xác thực Quản lý (BR03).");
-        JPanel body = new JPanel(new BorderLayout(0, 16));
+                "Tìm kiếm hóa đơn · Lọc trạng thái · Xem chi tiết món · In lại hóa đơn 80mm & Hủy đơn (BR03).");
+        JPanel body = new JPanel(new BorderLayout(0, 14));
         body.setOpaque(false);
 
-        String[] cols = {"MÃ HĐ", "NGÀY GIỜ", "BÀN / PAGER", "NHÂN VIÊN", "PHƯƠNG THỨC", "TỔNG TIỀN", "TRẠNG THÁI"};
+        JTextField txtSearchHD = new JTextField();
+        txtSearchHD.putClientProperty("JTextField.placeholderText", "Tìm theo Mã HĐ, Bàn, Thẻ rung, Tên/SĐT khách, Nhân viên...");
+        txtSearchHD.putClientProperty("FlatLaf.style", "arc: 12; margin: 8,12,8,12");
+
+        JComboBox<String> cbStatusFilter = new JComboBox<>(new String[]{
+                "Tất cả trạng thái", "Đang pha chế", "Chờ giao", "Hoàn tất", "Đã hủy"
+        });
+        cbStatusFilter.putClientProperty("FlatLaf.style", "arc: 12");
+
+        String[] cols = {"MÃ HĐ", "NGÀY GIỜ", "BÀN / PAGER", "KHÁCH HÀNG", "NHÂN VIÊN", "PHƯƠNG THỨC", "TỔNG TIỀN", "TRẠNG THÁI"};
         DefaultTableModel model = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int row, int column) { return false; }
         };
-
         JTable table = Theme.table(cols, new Object[0][]);
         table.setModel(model);
 
+        String[] detailCols = {"MÓN ĐỒ UỐNG", "SIZE", "SL", "ĐƠN GIÁ", "THÀNH TIỀN", "GHI CHÚ / TÙY BIẾN"};
+        DefaultTableModel detailModel = new DefaultTableModel(detailCols, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
+        };
+        JTable detailTable = Theme.table(detailCols, new Object[0][]);
+        detailTable.setModel(detailModel);
+
+        Runnable loadDetail = () -> {
+            detailModel.setRowCount(0);
+            int row = table.getSelectedRow();
+            if (row < 0) return;
+            String ma = (String) table.getValueAt(row, 0);
+            for (HoaDon hd : DataStore.getDsHoaDon()) {
+                if (hd.getMaHoaDon().equalsIgnoreCase(ma)) {
+                    for (ChiTietHoaDon ct : hd.getDsChiTiet()) {
+                        detailModel.addRow(new Object[]{
+                                ct.getMon() != null ? ct.getMon().getTenMon() : "Món",
+                                ct.getKichCo() != null ? ct.getKichCo().name() : "M",
+                                ct.getSoLuong(),
+                                String.format("%,.0f đ", ct.getDonGiaThucTe()),
+                                String.format("%,.0f đ", ct.getThanhTien()),
+                                ct.getGhiChu() != null ? ct.getGhiChu() : ""
+                        });
+                    }
+                    break;
+                }
+            }
+        };
+
         Runnable loadInvoices = () -> {
             model.setRowCount(0);
+            detailModel.setRowCount(0);
+            String q = DataStore.boDauTiengViet(txtSearchHD.getText().trim().toLowerCase());
+            String stFilter = (String) cbStatusFilter.getSelectedItem();
+
             for (HoaDon hd : DataStore.getDsHoaDon()) {
-                String statusStr = "DA_HUY".equals(hd.getTrangThaiDon()) ? "Đã hủy" : "Đã thanh toán";
+                String tt = hd.getTrangThaiDon() != null ? hd.getTrangThaiDon() : "DANG_PHA_CHE";
+                String statusStr = switch (tt.toUpperCase()) {
+                    case "DA_HUY" -> "Đã hủy";
+                    case "CHO_GIAO" -> "Chờ giao";
+                    case "HOAN_TAT" -> "Hoàn tất";
+                    default -> "Đang pha chế";
+                };
+                if (!"Tất cả trạng thái".equals(stFilter) && !statusStr.equals(stFilter)) {
+                    continue;
+                }
+
+                String khName = hd.getKhachHang() != null ? hd.getKhachHang().getHoTen() : "Khách vãng lai";
+                String khPhone = hd.getKhachHang() != null ? hd.getKhachHang().getSoDienThoai() : "";
+                String nvName = hd.getNhanVien() != null ? hd.getNhanVien().getHoTen() : "Thu ngân";
+                String banStr = hd.getBanPhucVu() + (hd.getSoTheRung() > 0 ? " (Thẻ #" + hd.getSoTheRung() + ")" : "");
+
+                if (!q.isEmpty()) {
+                    String searchable = DataStore.boDauTiengViet(
+                            (hd.getMaHoaDon() + " " + banStr + " " + khName + " " + khPhone + " " + nvName).toLowerCase());
+                    if (!searchable.contains(q)) continue;
+                }
+
                 model.addRow(new Object[]{
                         hd.getMaHoaDon(),
                         hd.getNgayLap().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
-                        hd.getBanPhucVu() + (hd.getSoTheRung() > 0 ? " (Thẻ #" + hd.getSoTheRung() + ")" : ""),
-                        hd.getNhanVien() != null ? hd.getNhanVien().getHoTen() : "Thu ngân",
+                        banStr,
+                        khName,
+                        nvName,
                         isTienMat(hd) ? "Tiền mặt" : "VietQR",
                         String.format("%,.0f đ", hd.getTongTien()),
                         statusStr
                 });
             }
         };
+
+        table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) loadDetail.run();
+        });
+        txtSearchHD.addKeyListener(new KeyAdapter() {
+            @Override public void keyReleased(KeyEvent e) { loadInvoices.run(); }
+        });
+        cbStatusFilter.addActionListener(e -> loadInvoices.run());
+
         DataStore.addDataChangeListener(loadInvoices);
         loadInvoices.run();
 
-        JButton btnPrint = Theme.button("🖨 In lại hóa đơn & Tem ly", false);
+        JButton btnPrint = Theme.button("In lại hóa đơn & Tem ly", false);
         JButton btnCancel = Theme.button("Hủy hóa đơn (Void)", false);
 
         btnPrint.addActionListener(e -> {
@@ -1196,13 +1276,18 @@ final class SampleScreens {
             }
         });
 
-        JPanel toolbar = new JPanel(new BorderLayout());
+        JPanel toolbar = new JPanel(new BorderLayout(12, 0));
         toolbar.setOpaque(false);
-        toolbar.add(Theme.label("Danh sách toàn bộ giao dịch thanh toán", 12, Theme.MUTED), BorderLayout.WEST);
-        toolbar.add(Theme.row(btnPrint, btnCancel), BorderLayout.EAST);
+        toolbar.add(txtSearchHD, BorderLayout.CENTER);
+        toolbar.add(Theme.row(cbStatusFilter, btnPrint, btnCancel), BorderLayout.EAST);
+
+        JPanel masterPanel = Theme.tablePanel("Danh sách hóa đơn đã ghi nhận (Nhấp chọn để xem chi tiết món)", table);
+        JPanel detailPanel = Theme.tablePanel("Chi tiết các món của hóa đơn đang chọn", detailTable);
+        detailPanel.setPreferredSize(new Dimension(0, 195));
 
         body.add(toolbar, BorderLayout.NORTH);
-        body.add(Theme.tablePanel("Hóa đơn đã ghi nhận", table), BorderLayout.CENTER);
+        body.add(masterPanel, BorderLayout.CENTER);
+        body.add(detailPanel, BorderLayout.SOUTH);
         page.add(body, BorderLayout.CENTER);
         return page;
     }
@@ -1257,13 +1342,19 @@ final class SampleScreens {
                 } catch (Exception ignored) { }
             }
         };
+        JTextField txtSearchMenu = new JTextField();
+        txtSearchMenu.putClientProperty("JTextField.placeholderText", "Tìm món theo tên, mã hoặc gõ tắt (cf, bx, td)...");
+        txtSearchMenu.putClientProperty("FlatLaf.style", "arc: 12; margin: 8,12,8,12");
+
         JTable table = Theme.table(cols, new Object[0][]);
         table.setModel(model);
 
         Runnable loadMenu = () -> {
             updatingMenuFromStore[0] = true;
             model.setRowCount(0);
+            String q = txtSearchMenu.getText();
             for (Mon m : DataStore.getDsMon()) {
+                if (!DataStore.khopTimKiemMon(m, q)) continue;
                 double g = m.getDonGiaGoc();
                 model.addRow(new Object[]{
                         m.getMaMon(),
@@ -1359,7 +1450,16 @@ final class SampleScreens {
             }
         });
 
-        body.add(Theme.row(btnThem, btnToggle), BorderLayout.NORTH);
+        txtSearchMenu.addKeyListener(new KeyAdapter() {
+            @Override public void keyReleased(KeyEvent e) { loadMenu.run(); }
+        });
+
+        JPanel menuToolbar = new JPanel(new BorderLayout(12, 0));
+        menuToolbar.setOpaque(false);
+        menuToolbar.add(txtSearchMenu, BorderLayout.CENTER);
+        menuToolbar.add(Theme.row(btnThem, btnToggle), BorderLayout.EAST);
+
+        body.add(menuToolbar, BorderLayout.NORTH);
         body.add(Theme.tablePanel("Bảng giá thực đơn HomuCafe (Nhấp đúp ô để sửa trực tiếp · Nhấp cột Tình trạng để bật/tắt)", table), BorderLayout.CENTER);
         page.add(body, BorderLayout.CENTER);
         return page;
@@ -1374,12 +1474,12 @@ final class SampleScreens {
         JPanel body = new JPanel(new BorderLayout(0, 16));
         body.setOpaque(false);
 
-        String[] cols = {"MÃ NV", "HỌ TÊN", "CHỨC VỤ", "SỐ ĐIỆN THOẠI", "CĂN CƯỚC CÔNG DÂN", "TRẠNG THÁI"};
+        String[] cols = {"MÃ NV", "HỌ TÊN", "CHỨC VỤ", "SỐ ĐIỆN THOẠI", "CĂN CƯỚC CÔNG DÂN", "TÀI KHOẢN", "TRẠNG THÁI"};
         final boolean[] updatingStaffFromStore = {false};
         DefaultTableModel model = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column > 0 && column != 5;
+                return column >= 1 && column <= 4;
             }
 
             @Override
@@ -1411,12 +1511,15 @@ final class SampleScreens {
             updatingStaffFromStore[0] = true;
             model.setRowCount(0);
             for (NhanVien nv : DataStore.getDsNhanVien()) {
+                TaiKhoan tk = DataStore.timTaiKhoanTheoMaNV(nv.getMaNV());
+                String tkInfo = tk != null ? tk.getTenDangNhap() + " (" + tk.getPhanQuyen() + ")" : "Chưa cấp";
                 model.addRow(new Object[]{
                         nv.getMaNV(),
                         nv.getHoTen(),
                         nv.getChucVu(),
                         nv.getSoDienThoai(),
                         nv.getCccd(),
+                        tkInfo,
                         nv.isDangLamViec() ? "Đang sử dụng" : "Không sử dụng"
                 });
             }
@@ -1430,7 +1533,7 @@ final class SampleScreens {
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 int row = table.rowAtPoint(e.getPoint());
                 int col = table.columnAtPoint(e.getPoint());
-                if (row >= 0 && col == 5) {
+                if (row >= 0 && col == 6) {
                     String ma = (String) model.getValueAt(row, 0);
                     for (NhanVien nv : DataStore.getDsNhanVien()) {
                         if (nv.getMaNV().equals(ma)) {
@@ -1444,8 +1547,69 @@ final class SampleScreens {
         });
 
         JButton btnThemNV = Theme.button("+ Thêm nhân viên mới", true);
+        JButton btnCapTaiKhoan = Theme.button("Cấp / Đổi tài khoản", false);
         JButton btnToggleNV = Theme.button("Đổi trạng thái sử dụng", false);
-        JButton btnDoiSoatCa = Theme.button("💵 Đối soát két tiền kết ca", false);
+        JButton btnDoiSoatCa = Theme.button("Đối soát két tiền kết ca", false);
+
+        btnCapTaiKhoan.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(page, "Vui lòng chọn 1 nhân viên trên bảng để cấp hoặc đổi tài khoản!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String maNV = (String) table.getValueAt(row, 0);
+            NhanVien targetNV = null;
+            for (NhanVien nv : DataStore.getDsNhanVien()) {
+                if (nv.getMaNV().equals(maNV)) {
+                    targetNV = nv;
+                    break;
+                }
+            }
+            if (targetNV == null) return;
+
+            TaiKhoan existingTK = DataStore.timTaiKhoanTheoMaNV(maNV);
+            JTextField txtUsername = new JTextField(existingTK != null ? existingTK.getTenDangNhap() : "");
+            JPasswordField txtMatKhau = new JPasswordField(existingTK != null ? existingTK.getMatKhau() : "123456");
+            JComboBox<String> cbQuyen = new JComboBox<>(new String[]{
+                    "STAFF (Thu ngân / Pha chế)",
+                    "ADMIN (Quản lý / Chủ quán)"
+            });
+            if (existingTK != null && "ADMIN".equalsIgnoreCase(existingTK.getPhanQuyen())) {
+                cbQuyen.setSelectedIndex(1);
+            } else if (targetNV.getChucVu() != null && targetNV.getChucVu().toLowerCase().contains("quản lý")) {
+                cbQuyen.setSelectedIndex(1);
+            }
+
+            JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
+            form.add(new JLabel("Nhân viên:")); form.add(new JLabel(targetNV.getMaNV() + " - " + targetNV.getHoTen()));
+            form.add(new JLabel("Tên đăng nhập (*):")); form.add(txtUsername);
+            form.add(new JLabel("Mật khẩu (>= 6 ký tự):")); form.add(txtMatKhau);
+            form.add(new JLabel("Phân quyền hệ thống:")); form.add(cbQuyen);
+
+            int opt = JOptionPane.showConfirmDialog(page, form, "Cấp / Cập nhật tài khoản đăng nhập", JOptionPane.OK_CANCEL_OPTION);
+            if (opt == JOptionPane.OK_OPTION) {
+                String user = txtUsername.getText().trim();
+                String pass = new String(txtMatKhau.getPassword()).trim();
+                if (user.isEmpty() || user.contains(" ")) {
+                    JOptionPane.showMessageDialog(page, "Tên đăng nhập không được trống hoặc chứa khoảng trắng!", "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                if (pass.length() < 6) {
+                    JOptionPane.showMessageDialog(page, "Mật khẩu phải có ít nhất 6 ký tự!", "Lỗi bảo mật", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                TaiKhoan trung = DataStore.timTaiKhoanTheoTen(user);
+                if (trung != null && trung.getNhanVien() != null && !trung.getNhanVien().getMaNV().equalsIgnoreCase(maNV)) {
+                    JOptionPane.showMessageDialog(page, "Tên đăng nhập '" + user + "' đã được cấp cho nhân viên khác!", "Trùng tên đăng nhập", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                String phanQuyen = cbQuyen.getSelectedIndex() == 1 ? "ADMIN" : "STAFF";
+                DataStore.saveTaiKhoan(new TaiKhoan(user, pass, phanQuyen, targetNV));
+                JOptionPane.showMessageDialog(page,
+                        "Đã lưu tài khoản '" + user + "' (" + phanQuyen + ") cho nhân viên " + targetNV.getHoTen() + "!\nCó thể dùng để đăng nhập ngay.",
+                        "Cấp tài khoản thành công", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
 
         btnThemNV.addActionListener(e -> {
             JTextField txtTen = new JTextField();
@@ -1557,7 +1721,7 @@ final class SampleScreens {
             }
         });
 
-        body.add(Theme.row(btnThemNV, btnToggleNV, btnDoiSoatCa), BorderLayout.NORTH);
+        body.add(Theme.row(btnThemNV, btnCapTaiKhoan, btnToggleNV, btnDoiSoatCa), BorderLayout.NORTH);
         body.add(Theme.tablePanel("Danh sách nhân sự (Nhấp đúp ô để sửa trực tiếp · Nhấp cột Trạng thái để bật/tắt)", table), BorderLayout.CENTER);
         page.add(body, BorderLayout.CENTER);
         return page;
@@ -1608,13 +1772,22 @@ final class SampleScreens {
                 } catch (Exception ignored) { }
             }
         };
+        JTextField txtSearchCust = new JTextField();
+        txtSearchCust.putClientProperty("JTextField.placeholderText", "Tìm khách hàng theo tên, SĐT hoặc mã KH...");
+        txtSearchCust.putClientProperty("FlatLaf.style", "arc: 12; margin: 8,12,8,12");
+
         JTable table = Theme.table(cols, new Object[0][]);
         table.setModel(model);
 
         Runnable loadCust = () -> {
             updatingCustFromStore[0] = true;
             model.setRowCount(0);
+            String q = DataStore.boDauTiengViet(txtSearchCust.getText().trim().toLowerCase());
             for (KhachHang kh : DataStore.getDsKhachHang()) {
+                if (!q.isEmpty()) {
+                    String s = DataStore.boDauTiengViet((kh.getMaKH() + " " + kh.getHoTen() + " " + kh.getSoDienThoai()).toLowerCase());
+                    if (!s.contains(q)) continue;
+                }
                 model.addRow(new Object[]{
                         kh.getMaKH(),
                         kh.getHoTen(),
@@ -1643,7 +1816,16 @@ final class SampleScreens {
             }
         });
 
-        body.add(Theme.row(btnThem), BorderLayout.NORTH);
+        txtSearchCust.addKeyListener(new KeyAdapter() {
+            @Override public void keyReleased(KeyEvent e) { loadCust.run(); }
+        });
+
+        JPanel custToolbar = new JPanel(new BorderLayout(12, 0));
+        custToolbar.setOpaque(false);
+        custToolbar.add(txtSearchCust, BorderLayout.CENTER);
+        custToolbar.add(btnThem, BorderLayout.EAST);
+
+        body.add(custToolbar, BorderLayout.NORTH);
         body.add(Theme.tablePanel("Danh sách thành viên HomuCafe (Nhấp đúp ô để sửa trực tiếp)", table), BorderLayout.CENTER);
         page.add(body, BorderLayout.CENTER);
         return page;
@@ -1725,6 +1907,230 @@ final class SampleScreens {
                 g.dispose();
             }
         }
+    }
+
+    private static void showQuick86Dialog(Window owner) {
+        JDialog dialog = new JDialog(owner, "Báo hết món nhanh (86) · HomuCafe", Dialog.ModalityType.APPLICATION_MODAL);
+        JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBackground(Theme.WHITE);
+        root.setBorder(new EmptyBorder(18, 20, 18, 20));
+
+        JTextField txtSearch86 = new JTextField();
+        txtSearch86.putClientProperty("JTextField.placeholderText", "Tìm nhanh món theo tên, mã hoặc gõ tắt (cf, bx, td)...");
+        txtSearch86.putClientProperty("FlatLaf.style", "arc: 12; margin: 8,12,8,12");
+
+        JComboBox<String> cbCat86 = new JComboBox<>();
+        cbCat86.addItem("Tất cả nhóm món");
+        for (LoaiMon lm : DataStore.getDsLoaiMon()) {
+            cbCat86.addItem(lm.getTenLoai());
+        }
+        cbCat86.putClientProperty("FlatLaf.style", "arc: 12");
+
+        JPanel header = new JPanel(new BorderLayout(0, 10));
+        header.setOpaque(false);
+        header.add(Theme.stack(3,
+                Theme.title("Báo hết nguyên liệu / Tạm ngưng món (86)"),
+                Theme.label("Nhấp đúp vào món hoặc bấm nút đổi trạng thái để khóa ngay trên quầy POS.", 12, Theme.MUTED)
+        ), BorderLayout.NORTH);
+
+        JPanel filterBar = new JPanel(new BorderLayout(10, 0));
+        filterBar.setOpaque(false);
+        filterBar.add(txtSearch86, BorderLayout.CENTER);
+        filterBar.add(cbCat86, BorderLayout.EAST);
+        header.add(filterBar, BorderLayout.SOUTH);
+        root.add(header, BorderLayout.NORTH);
+
+        String[] cols = {"MÃ MÓN", "TÊN MÓN", "NHÓM MÓN", "TRẠNG THÁI"};
+        DefaultTableModel model86 = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int row, int column) { return false; }
+        };
+        JTable tbl86 = Theme.table(cols, new Object[0][]);
+        tbl86.setModel(model86);
+        tbl86.getColumnModel().getColumn(0).setPreferredWidth(80);
+        tbl86.getColumnModel().getColumn(1).setPreferredWidth(210);
+        tbl86.getColumnModel().getColumn(2).setPreferredWidth(115);
+        tbl86.getColumnModel().getColumn(3).setPreferredWidth(120);
+
+        Runnable reload86 = () -> {
+            int selectedRow = tbl86.getSelectedRow();
+            String selectedMa = (selectedRow >= 0 && selectedRow < model86.getRowCount())
+                    ? (String) model86.getValueAt(selectedRow, 0) : null;
+            model86.setRowCount(0);
+            String q = txtSearch86.getText();
+            String cat = (String) cbCat86.getSelectedItem();
+
+            for (Mon m : DataStore.getDsMon()) {
+                String tenLoai = m.getLoaiMon() != null ? m.getLoaiMon().getTenLoai() : "Khác";
+                if (!"Tất cả nhóm món".equals(cat) && !tenLoai.equalsIgnoreCase(cat)) continue;
+                if (!DataStore.khopTimKiemMon(m, q)) continue;
+                model86.addRow(new Object[]{
+                        m.getMaMon(),
+                        m.getTenMon(),
+                        tenLoai,
+                        m.isDangKinhDoanh() ? "Đang bán" : "TẠM HẾT (86)"
+                });
+            }
+            if (selectedMa != null) {
+                for (int r = 0; r < model86.getRowCount(); r++) {
+                    if (selectedMa.equals(model86.getValueAt(r, 0))) {
+                        tbl86.setRowSelectionInterval(r, r);
+                        break;
+                    }
+                }
+            }
+        };
+
+        Runnable toggleSelected86 = () -> {
+            int row = tbl86.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(dialog, "Vui lòng chọn 1 món trong danh sách!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String ma = (String) model86.getValueAt(row, 0);
+            Mon m = DataStore.timMonTheoMa(ma);
+            if (m != null) {
+                m.setDangKinhDoanh(!m.isDangKinhDoanh());
+                DataStore.saveMon(m);
+                reload86.run();
+            }
+        };
+
+        txtSearch86.addKeyListener(new KeyAdapter() {
+            @Override public void keyReleased(KeyEvent e) { reload86.run(); }
+        });
+        cbCat86.addActionListener(e -> reload86.run());
+        tbl86.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    toggleSelected86.run();
+                }
+            }
+        });
+
+        reload86.run();
+        root.add(new JScrollPane(tbl86), BorderLayout.CENTER);
+
+        JButton btnToggle86 = Theme.button("Đổi trạng thái (Đang bán / Tạm hết 86)", true);
+        btnToggle86.addActionListener(e -> toggleSelected86.run());
+
+        JButton btnResetAll = Theme.button("Mở bán lại tất cả", false);
+        btnResetAll.addActionListener(e -> {
+            for (Mon m : DataStore.getDsMon()) {
+                if (!m.isDangKinhDoanh()) {
+                    m.setDangKinhDoanh(true);
+                    DataStore.saveMon(m);
+                }
+            }
+            reload86.run();
+            JOptionPane.showMessageDialog(dialog, "Đã mở bán lại toàn bộ món trong thực đơn!", "Hoàn tất", JOptionPane.INFORMATION_MESSAGE);
+        });
+
+        JButton btnClose = Theme.button("Đóng", false);
+        btnClose.addActionListener(e -> dialog.dispose());
+
+        JPanel footer = new JPanel(new BorderLayout());
+        footer.setOpaque(false);
+        footer.add(btnResetAll, BorderLayout.WEST);
+        footer.add(Theme.row(btnToggle86, btnClose), BorderLayout.EAST);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.setSize(620, 500);
+        dialog.setLocationRelativeTo(owner);
+        dialog.setVisible(true);
+    }
+
+    private static double[] showQuickCashDialog(Window owner, double finalPrice) {
+        JDialog dialog = new JDialog(owner, "Thanh toán Tiền mặt · HomuCafe", Dialog.ModalityType.APPLICATION_MODAL);
+        JPanel root = new JPanel(new BorderLayout(0, 14));
+        root.setBackground(Theme.WHITE);
+        root.setBorder(new EmptyBorder(20, 24, 20, 24));
+
+        JLabel lblMustPay = Theme.label("Tổng tiền phải thu: " + String.format("%,.0f đ", finalPrice), 18, Theme.GREEN);
+        lblMustPay.setFont(new Font("Segoe UI", Font.BOLD, 18));
+
+        JTextField txtCash = new JTextField(String.format("%.0f", finalPrice));
+        txtCash.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        txtCash.putClientProperty("FlatLaf.style", "arc: 10; margin: 8,10,8,10");
+
+        JLabel lblChange = Theme.label("Tiền thối lại cho khách: 0 đ", 15, Theme.INK);
+        lblChange.setFont(new Font("Segoe UI", Font.BOLD, 15));
+
+        Runnable updateChange = () -> {
+            double cash = parseCurrency(txtCash.getText());
+            if (cash < finalPrice) {
+                lblChange.setText(String.format("Khách đưa còn thiếu: %,.0f đ", finalPrice - cash));
+                lblChange.setForeground(new Color(220, 38, 38));
+            } else {
+                lblChange.setText(String.format("Tiền thối lại cho khách: %,.0f đ", cash - finalPrice));
+                lblChange.setForeground(Theme.GREEN);
+            }
+        };
+
+        txtCash.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { updateChange.run(); }
+            @Override public void removeUpdate(DocumentEvent e) { updateChange.run(); }
+            @Override public void changedUpdate(DocumentEvent e) { updateChange.run(); }
+        });
+
+        JPanel pnlQuick = new JPanel(new GridLayout(1, 5, 6, 0));
+        pnlQuick.setOpaque(false);
+        long[] presets = {(long) Math.ceil(finalPrice), 50000L, 100000L, 200000L, 500000L};
+        String[] presetLabels = {"Đúng tiền", "50.000", "100.000", "200.000", "500.000"};
+        for (int i = 0; i < presets.length; i++) {
+            final long val = presets[i];
+            JButton b = Theme.button(presetLabels[i], false);
+            b.addActionListener(e -> {
+                txtCash.setText(String.valueOf(val));
+                txtCash.requestFocusInWindow();
+            });
+            pnlQuick.add(b);
+        }
+
+        JPanel center = Theme.stack(10,
+                lblMustPay,
+                Theme.label("Số tiền khách đưa (VND):", 12, Theme.INK),
+                txtCash,
+                pnlQuick,
+                lblChange
+        );
+        root.add(center, BorderLayout.CENTER);
+
+        final boolean[] confirmed = {false};
+        JButton btnCancel = Theme.button("Hủy bỏ", false);
+        btnCancel.addActionListener(e -> dialog.dispose());
+
+        JButton btnConfirm = Theme.button("✓ Xác nhận thu tiền", true);
+        ActionListener confirmAction = e -> {
+            double cash = parseCurrency(txtCash.getText());
+            if (cash < finalPrice) {
+                JOptionPane.showMessageDialog(dialog,
+                        String.format("Số tiền khách đưa (%,.0f đ) nhỏ hơn tổng hóa đơn (%,.0f đ)!", cash, finalPrice),
+                        "Chưa đủ tiền thanh toán", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            confirmed[0] = true;
+            dialog.dispose();
+        };
+        btnConfirm.addActionListener(confirmAction);
+        txtCash.addActionListener(confirmAction);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        footer.setOpaque(false);
+        footer.add(btnCancel);
+        footer.add(btnConfirm);
+        root.add(footer, BorderLayout.SOUTH);
+
+        updateChange.run();
+        dialog.setContentPane(root);
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(470, 290));
+        dialog.setLocationRelativeTo(owner);
+        dialog.setVisible(true);
+
+        if (!confirmed[0]) return null;
+        double cash = parseCurrency(txtCash.getText());
+        return new double[]{cash, Math.max(0, cash - finalPrice)};
     }
 
     private static double parseCurrency(String text) {

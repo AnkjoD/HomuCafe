@@ -45,7 +45,7 @@ public class DialogInHoaDonVaTem extends JDialog {
         txtBill.setBorder(new EmptyBorder(12, 16, 12, 16));
         pnlBill.add(new JScrollPane(txtBill), BorderLayout.CENTER);
 
-        JButton btnInHoaDon = Theme.button("🖨 In Hóa Đơn (80mm)", true);
+        JButton btnInHoaDon = Theme.button("In Hóa Đơn (80mm)", true);
         btnInHoaDon.addActionListener(e -> inHoaDonNhiet(txtBill));
         JPanel pnlBillBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         pnlBillBottom.setOpaque(false);
@@ -76,7 +76,7 @@ public class DialogInHoaDonVaTem extends JDialog {
         scrollTem.setBorder(BorderFactory.createEmptyBorder());
         pnlTem.add(scrollTem, BorderLayout.CENTER);
 
-        JButton btnInTem = Theme.button("🏷 In Toàn Bộ Tem Dán Ly", true);
+        JButton btnInTem = Theme.button("In Toàn Bộ Tem Dán Ly", true);
         btnInTem.addActionListener(e -> inToanBoTemDanLy(totalCups));
         JPanel pnlTemBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         pnlTemBottom.setOpaque(false);

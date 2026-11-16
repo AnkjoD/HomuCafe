@@ -174,6 +174,25 @@ public class HoaDon_DAO {
         }
     }
 
+    public boolean capNhatBanHoaDon(String maHD, String maBanMoi) {
+        Connection con = ConnectDB.getConnection();
+        if (con == null) return false;
+
+        String sql = "UPDATE HOA_DON SET maBan = ? WHERE maHD = ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            if (maBanMoi != null && !maBanMoi.trim().isEmpty()) {
+                stmt.setString(1, maBanMoi.trim());
+            } else {
+                stmt.setNull(1, java.sql.Types.NVARCHAR);
+            }
+            stmt.setString(2, maHD);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Lỗi capNhatBanHoaDon: " + e.getMessage());
+            return false;
+        }
+    }
+
     public boolean huyHoaDon(String maHD, String lyDoHuy, String maNVXacNhan) {
         Connection con = ConnectDB.getConnection();
         if (con == null) return false;

@@ -103,4 +103,39 @@ public class TaiKhoan_DAO {
             return false;
         }
     }
+
+    public boolean luuHoacCapNhatTaiKhoan(TaiKhoan tk) {
+        Connection con = ConnectDB.getConnection();
+        if (con == null || tk == null || tk.getNhanVien() == null) return false;
+
+        String checkSql = "SELECT tenDangNhap FROM TAI_KHOAN WHERE maNV = ? OR tenDangNhap = ?";
+        try (PreparedStatement check = con.prepareStatement(checkSql)) {
+            check.setString(1, tk.getNhanVien().getMaNV());
+            check.setString(2, tk.getTenDangNhap());
+            try (ResultSet rs = check.executeQuery()) {
+                if (rs.next()) {
+                    String updateSql = "UPDATE TAI_KHOAN SET tenDangNhap = ?, matKhau = ?, phanQuyen = ? WHERE maNV = ?";
+                    try (PreparedStatement upd = con.prepareStatement(updateSql)) {
+                        upd.setString(1, tk.getTenDangNhap());
+                        upd.setString(2, tk.getMatKhau());
+                        upd.setString(3, tk.getPhanQuyen());
+                        upd.setString(4, tk.getNhanVien().getMaNV());
+                        return upd.executeUpdate() > 0;
+                    }
+                } else {
+                    String insertSql = "INSERT INTO TAI_KHOAN (tenDangNhap, matKhau, phanQuyen, maNV) VALUES (?, ?, ?, ?)";
+                    try (PreparedStatement ins = con.prepareStatement(insertSql)) {
+                        ins.setString(1, tk.getTenDangNhap());
+                        ins.setString(2, tk.getMatKhau());
+                        ins.setString(3, tk.getPhanQuyen());
+                        ins.setString(4, tk.getNhanVien().getMaNV());
+                        return ins.executeUpdate() > 0;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi luuHoacCapNhatTaiKhoan: " + e.getMessage());
+            return false;
+        }
+    }
 }

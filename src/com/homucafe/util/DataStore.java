@@ -308,6 +308,46 @@ public class DataStore {
         return false;
     }
 
+    public static TaiKhoan timTaiKhoanTheoMaNV(String maNV) {
+        if (maNV == null) return null;
+        for (TaiKhoan tk : dsTaiKhoan) {
+            if (tk.getNhanVien() != null && maNV.equalsIgnoreCase(tk.getNhanVien().getMaNV())) {
+                return tk;
+            }
+        }
+        return null;
+    }
+
+    public static TaiKhoan timTaiKhoanTheoTen(String tenDangNhap) {
+        if (tenDangNhap == null) return null;
+        for (TaiKhoan tk : dsTaiKhoan) {
+            if (tenDangNhap.trim().equalsIgnoreCase(tk.getTenDangNhap())) {
+                return tk;
+            }
+        }
+        return null;
+    }
+
+    public static void saveTaiKhoan(TaiKhoan tk) {
+        if (tk == null || tk.getNhanVien() == null) return;
+        TaiKhoan existing = timTaiKhoanTheoMaNV(tk.getNhanVien().getMaNV());
+        if (existing != null) {
+            existing.setTenDangNhap(tk.getTenDangNhap());
+            existing.setMatKhau(tk.getMatKhau());
+            existing.setPhanQuyen(tk.getPhanQuyen());
+        } else {
+            dsTaiKhoan.add(tk);
+        }
+        notifyDataChanged();
+        new Thread(() -> {
+            try {
+                new com.homucafe.dao.TaiKhoan_DAO().luuHoacCapNhatTaiKhoan(tk);
+            } catch (Throwable t) {
+                logSqlError("saveTaiKhoan", t);
+            }
+        }).start();
+    }
+
     public static Ban timBanTheoSo(int soBan) {
         for (Ban b : dsBan) {
             if (b.getSoBan() == soBan) return b;
@@ -678,6 +718,45 @@ public class DataStore {
                 logSqlError("saveTrangThaiBan", t);
             }
         }).start();
+    }
+
+    public static int chuyenHoacGopBan(int tuBanSo, int sangBanSo) {
+        if (tuBanSo <= 0 || sangBanSo <= 0 || tuBanSo == sangBanSo) return 0;
+        String tuBanStr = String.format("Bàn %02d", tuBanSo);
+        String sangBanStr = String.format("Bàn %02d", sangBanSo);
+        String maBanMoi = String.format("B%02d", sangBanSo);
+
+        List<HoaDon> donCanChuyen = new ArrayList<>();
+        HoaDon ganNhat = null;
+        for (HoaDon hd : dsHoaDon) {
+            if ("DA_HUY".equalsIgnoreCase(hd.getTrangThaiDon())) continue;
+            boolean khopBan = tuBanStr.equalsIgnoreCase(hd.getBanPhucVu()) || hd.getSoBan() == tuBanSo;
+            if (!khopBan) continue;
+            if (ganNhat == null) ganNhat = hd;
+            if ("DANG_PHA_CHE".equalsIgnoreCase(hd.getTrangThaiDon()) || "CHO_GIAO".equalsIgnoreCase(hd.getTrangThaiDon())) {
+                donCanChuyen.add(hd);
+            }
+        }
+        if (donCanChuyen.isEmpty() && ganNhat != null) {
+            donCanChuyen.add(ganNhat);
+        }
+
+        for (HoaDon hd : donCanChuyen) {
+            hd.setSoBan(sangBanSo);
+            hd.setBanPhucVu(sangBanStr);
+            final String maHD = hd.getMaHoaDon();
+            new Thread(() -> {
+                try {
+                    new com.homucafe.dao.HoaDon_DAO().capNhatBanHoaDon(maHD, maBanMoi);
+                } catch (Throwable t) {
+                    logSqlError("chuyenHoacGopBan", t);
+                }
+            }).start();
+        }
+
+        setTrangThaiBan(tuBanSo, "TRONG");
+        setTrangThaiBan(sangBanSo, "DANG_PHUC_VU");
+        return donCanChuyen.size();
     }
 
     public static void saveVoucher(Voucher v) {
