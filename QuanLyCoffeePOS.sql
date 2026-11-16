@@ -144,12 +144,13 @@ CREATE TABLE CHI_TIET_PHIEU_DAT_BAN (
 GO
 
 -- ========================================================
--- 11. BẢNG HÓA ĐƠN (Đã bỏ soThuTuNgay, soTheRung, tongTien; liên kết PHUONG_THUC_THANH_TOAN)
+-- 11. BẢNG HÓA ĐƠN (soTheRung 1-20; liên kết PHUONG_THUC_THANH_TOAN)
 -- ========================================================
 CREATE TABLE HOA_DON (
     maHD NVARCHAR(20) PRIMARY KEY,
     ngayLap DATETIME NOT NULL DEFAULT GETDATE(),
     loaiDon NVARCHAR(20) NOT NULL CHECK (loaiDon IN (N'TAI_QUAN', N'MANG_DI')),
+    soTheRung INT NULL CHECK (soTheRung IS NULL OR soTheRung BETWEEN 1 AND 20),
     giamGia DECIMAL(18,2) NOT NULL DEFAULT 0,
     trangThaiDon NVARCHAR(30) NOT NULL CHECK (trangThaiDon IN (N'DANG_PHA_CHE', N'CHO_GIAO', N'HOAN_TAT', N'DA_HUY')),
     maBan NVARCHAR(10) NULL FOREIGN KEY REFERENCES BAN(maBan),
@@ -161,16 +162,16 @@ CREATE TABLE HOA_DON (
 GO
 
 -- ========================================================
--- 12. BẢNG CHI TIẾT HÓA ĐƠN (Đã bỏ thanhTien; Khóa chính kết hợp maHD, maMon, kichCo)
+-- 12. BẢNG CHI TIẾT HÓA ĐƠN (Đã có maCTHD IDENTITY để cho phép cùng món/size khác topping/đường/đá)
 -- ========================================================
 CREATE TABLE CHI_TIET_HOA_DON (
+    maCTHD INT IDENTITY(1,1) PRIMARY KEY,
     maHD NVARCHAR(20) NOT NULL FOREIGN KEY REFERENCES HOA_DON(maHD) ON DELETE CASCADE,
     maMon NVARCHAR(10) NOT NULL FOREIGN KEY REFERENCES MON(maMon),
     kichCo VARCHAR(5) NOT NULL CHECK (kichCo IN ('S', 'M', 'L')),
     soLuong INT NOT NULL CHECK (soLuong > 0),
     donGiaThucTe DECIMAL(18,2) NOT NULL,
-    ghiChu NVARCHAR(255) NULL,        -- Ghi chú mức đường/đá/topping tùy biến
-    PRIMARY KEY (maHD, maMon, kichCo) -- Khóa chính kết hợp chuẩn hóa mô hình dữ liệu quan hệ
+    ghiChu NVARCHAR(255) NULL         -- Ghi chú mức đường/đá/topping tùy biến
 );
 GO
 
@@ -259,10 +260,10 @@ INSERT INTO CHI_TIET_PHIEU_DAT_BAN (maPhieu, maBan, ghiChu) VALUES
 ('PDB002', 'B12', N'Bàn 6 chỗ view cửa sổ');
 
 -- 11. Hóa đơn mẫu
-INSERT INTO HOA_DON (maHD, ngayLap, loaiDon, giamGia, trangThaiDon, maNV, maKH, maVoucher, maBan, maPhuongThuc) VALUES 
-('HD20261104-001', '2026-11-04 08:30:00', N'TAI_QUAN', 0, N'HOAN_TAT', 'NV01', 'KH0001', NULL, 'B03', 'PT01'),
-('HD20261104-002', '2026-11-04 09:15:00', N'MANG_DI', 10000, N'HOAN_TAT', 'NV01', 'KH0002', 'HOMU10', NULL, 'PT02'),
-('HD20261104-003', '2026-11-04 10:20:00', N'TAI_QUAN', 0, N'DANG_PHA_CHE', 'NV01', 'KH0003', NULL, 'B01', 'PT01');
+INSERT INTO HOA_DON (maHD, ngayLap, loaiDon, soTheRung, giamGia, trangThaiDon, maNV, maKH, maVoucher, maBan, maPhuongThuc) VALUES 
+('HD20261104-001', '2026-11-04 08:30:00', N'TAI_QUAN', 1, 0, N'HOAN_TAT', 'NV01', 'KH0001', NULL, 'B03', 'PT01'),
+('HD20261104-002', '2026-11-04 09:15:00', N'MANG_DI', 2, 10000, N'HOAN_TAT', 'NV01', 'KH0002', 'HOMU10', NULL, 'PT02'),
+('HD20261104-003', '2026-11-04 10:20:00', N'TAI_QUAN', 3, 0, N'DANG_PHA_CHE', 'NV01', 'KH0003', NULL, 'B01', 'PT01');
 
 -- 12. Chi tiết hóa đơn mẫu (Không lưu thanhTien tính động)
 INSERT INTO CHI_TIET_HOA_DON (maHD, maMon, kichCo, soLuong, donGiaThucTe, ghiChu) VALUES 

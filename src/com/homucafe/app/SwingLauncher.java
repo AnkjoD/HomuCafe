@@ -1,6 +1,8 @@
 package com.homucafe.app;
 
+import com.homucafe.entity.TaiKhoan;
 import com.homucafe.shared.ui.Theme;
+import com.homucafe.util.DataStore;
 
 import javax.swing.*;
 import java.awt.*;
@@ -9,7 +11,7 @@ import java.awt.event.KeyEvent;
 /**
  * Điểm khởi chạy chính ứng dụng HomuCafe POS & Pager System.
  * Tích hợp toàn diện giao diện phẳng hiện đại FlatLaf cùng thanh JMenuBar chuẩn IUH
- * (đầy đủ Mnemonic Alt+... và Accelerator Ctrl+... theo barem chấm điểm đồ án).
+ * và Màn hình Đăng nhập xác thực tài khoản thật.
  */
 public class SwingLauncher {
 
@@ -26,7 +28,32 @@ public class SwingLauncher {
             frame.setLocationRelativeTo(null);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
+            // Mở Dialog Đăng nhập thật
+            DialogDangNhap loginDlg = new DialogDangNhap(frame);
+            loginDlg.setVisible(true);
+
+            if (!loginDlg.isDangNhapThanhCong()) {
+                System.exit(0);
+                return;
+            }
+
             WorkspaceView workspaceView = new WorkspaceView();
+
+            // Phân quyền theo vai trò đăng nhập
+            TaiKhoan currentUser = DataStore.getTaiKhoanDangNhap();
+            if (currentUser != null) {
+                if ("ADMIN".equalsIgnoreCase(currentUser.getPhanQuyen())) {
+                    workspaceView.setPreviewRole(PreviewRole.OWNER);
+                } else {
+                    String cv = currentUser.getNhanVien() != null ? currentUser.getNhanVien().getChucVu().toLowerCase() : "";
+                    if (cv.contains("pha chế") || cv.contains("bar")) {
+                        workspaceView.setPreviewRole(PreviewRole.BARISTA);
+                    } else {
+                        workspaceView.setPreviewRole(PreviewRole.CASHIER);
+                    }
+                }
+            }
+
             frame.setJMenuBar(createMenuBar(workspaceView, frame));
             frame.setContentPane(workspaceView);
             frame.setVisible(true);
@@ -42,11 +69,29 @@ public class SwingLauncher {
         JMenu menuHeThong = new JMenu("Hệ thống");
         menuHeThong.setMnemonic(KeyEvent.VK_H);
 
-        JMenuItem mniDangNhap = new JMenuItem("Đăng nhập...");
+        JMenuItem mniDangNhap = new JMenuItem("Đăng nhập tài khoản khác...");
         mniDangNhap.setMnemonic(KeyEvent.VK_L);
         mniDangNhap.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
         mniDangNhap.addActionListener(e -> {
-            JOptionPane.showMessageDialog(frame, "Bạn có thể chuyển đổi nhanh vai trò làm việc tại mục 'VAI TRÒ LÀM VIỆC' ở góc trên bên phải!", "Thông tin đăng nhập", JOptionPane.INFORMATION_MESSAGE);
+            DialogDangNhap loginDlg = new DialogDangNhap(frame);
+            loginDlg.setVisible(true);
+            if (loginDlg.isDangNhapThanhCong()) {
+                TaiKhoan tk = DataStore.getTaiKhoanDangNhap();
+                if (tk != null) {
+                    if ("ADMIN".equalsIgnoreCase(tk.getPhanQuyen())) {
+                        workspaceView.setPreviewRole(PreviewRole.OWNER);
+                    } else {
+                        workspaceView.setPreviewRole(PreviewRole.CASHIER);
+                    }
+                }
+            }
+        });
+
+        JMenuItem mniDoiMatKhau = new JMenuItem("Đổi mật khẩu...");
+        mniDoiMatKhau.setMnemonic(KeyEvent.VK_P);
+        mniDoiMatKhau.addActionListener(e -> {
+            DialogDoiMatKhau dlg = new DialogDoiMatKhau(frame);
+            dlg.setVisible(true);
         });
 
         JMenuItem mniDangXuat = new JMenuItem("Đăng xuất");
@@ -55,7 +100,16 @@ public class SwingLauncher {
         mniDangXuat.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(frame, "Bạn có chắc chắn muốn đăng xuất phiên làm việc hiện tại?", "Xác nhận đăng xuất", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                workspaceView.setPreviewRole(PreviewRole.CASHIER);
+                DialogDangNhap loginDlg = new DialogDangNhap(frame);
+                loginDlg.setVisible(true);
+                if (loginDlg.isDangNhapThanhCong()) {
+                    TaiKhoan tk = DataStore.getTaiKhoanDangNhap();
+                    if (tk != null && "ADMIN".equalsIgnoreCase(tk.getPhanQuyen())) {
+                        workspaceView.setPreviewRole(PreviewRole.OWNER);
+                    } else {
+                        workspaceView.setPreviewRole(PreviewRole.CASHIER);
+                    }
+                }
             }
         });
 
@@ -65,6 +119,7 @@ public class SwingLauncher {
         mniThoat.addActionListener(e -> System.exit(0));
 
         menuHeThong.add(mniDangNhap);
+        menuHeThong.add(mniDoiMatKhau);
         menuHeThong.add(mniDangXuat);
         menuHeThong.addSeparator();
         menuHeThong.add(mniThoat);
@@ -149,7 +204,8 @@ public class SwingLauncher {
                     "QUẢN LÝ BÁN HÀNG COFFEE TỰ PHỤC VỤ (COFFEE POS & PAGER SYSTEM)\n" +
                             "• Bán hàng: Chọn món -> Tùy biến Size/Đường/Đá/Topping -> Gán thẻ rung Pager -> Thanh toán\n" +
                             "• Quầy pha chế: Theo dõi hàng đợi FIFO, pha chế đồ uống và kích hoạt báo rung thẻ khi hoàn tất\n" +
-                            "• Báo biểu: Phân tích doanh thu, giờ cao điểm, phương thức thanh toán và dòng tiền",
+                            "• Sơ đồ bàn: Theo dõi 12 bàn, Check-in đặt bàn, Dọn bàn\n" +
+                            "• Báo biểu: Phân tích doanh thu, giờ cao điểm, phương thức thanh toán và đối soát ca tiền mặt",
                     "Hướng dẫn sử dụng", JOptionPane.INFORMATION_MESSAGE);
         });
 
@@ -174,4 +230,3 @@ public class SwingLauncher {
         return menuBar;
     }
 }
-

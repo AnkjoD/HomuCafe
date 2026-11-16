@@ -48,7 +48,23 @@ public class ChiTietHoaDon_DAO {
                     double dg = rs.getDouble("donGiaThucTe");
                     String ghiChu = rs.getString("ghiChu");
 
-                    ChiTietHoaDon item = new ChiTietHoaDon(count++, mon, size, sl, dg, 100, "BINH_THUONG", ghiChu);
+                    int mucDuong = 100;
+                    String mucDa = "BINH_THUONG";
+                    String topping = ghiChu;
+
+                    // Parse ghi chú đường đá nếu có định dạng
+                    if (ghiChu != null) {
+                        if (ghiChu.contains("0% đường")) mucDuong = 0;
+                        else if (ghiChu.contains("30% đường")) mucDuong = 30;
+                        else if (ghiChu.contains("50% đường")) mucDuong = 50;
+                        else if (ghiChu.contains("70% đường")) mucDuong = 70;
+
+                        if (ghiChu.contains("Không đá")) mucDa = "KHONG_DA";
+                        else if (ghiChu.contains("Ít đá")) mucDa = "IT_DA";
+                        else if (ghiChu.contains("Nóng") || ghiChu.contains("nóng")) mucDa = "NONG";
+                    }
+
+                    ChiTietHoaDon item = new ChiTietHoaDon(count++, mon, size, sl, dg, mucDuong, mucDa, topping);
                     ds.add(item);
                 }
             }
@@ -78,4 +94,3 @@ public class ChiTietHoaDon_DAO {
         }
     }
 }
-

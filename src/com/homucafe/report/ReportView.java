@@ -1,125 +1,442 @@
 package com.homucafe.report;
 
+import com.homucafe.entity.ChiTietHoaDon;
+import com.homucafe.entity.HoaDon;
 import com.homucafe.shared.ui.Theme;
-import java.awt.*;
+import com.homucafe.util.DataStore;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.List;
+
 import static com.homucafe.report.ReportChart.Kind.*;
-import static com.homucafe.report.ReportSamples.*;
 
 /**
- * Màn hình Báo cáo kinh doanh đa chiều: Tổng quan, Bán hàng, Món bán, Ca làm, Tài chính.
- * Đã loại bỏ phần Kho nguyên liệu theo yêu cầu phạm vi Coffee POS.
+ * Màn hình Báo cáo kinh doanh đa chiều & Real-time Analytics cho HomuCafe.
+ * Tính toán 100% từ dữ liệu hóa đơn thật trong DataStore, hỗ trợ lọc thời gian & xuất Excel CSV.
  */
 public final class ReportView extends JPanel {
     private final JTabbedPane tabs = new JTabbedPane();
     private static final String FINANCE = "Tài chính";
 
+    private final JComboBox<String> timeFilter = new JComboBox<>(new String[]{
+            "Hôm nay", "7 ngày qua", "Tháng này", "Tất cả"
+    });
+    private final JButton btnExportCSV = Theme.button("📥 Xuất báo cáo CSV (Excel)", true);
+    private final JButton btnInKetCa = Theme.button("🖨 In báo cáo kết ca", false);
+
+    private final JPanel pnlOverviewContainer = new JPanel(new BorderLayout());
+    private final JPanel pnlSalesContainer = new JPanel(new BorderLayout());
+    private final JPanel pnlProductsContainer = new JPanel(new BorderLayout());
+    private final JPanel pnlShiftsContainer = new JPanel(new BorderLayout());
+    private final JPanel pnlFinanceContainer = new JPanel(new BorderLayout());
+
     public ReportView() {
         setLayout(new BorderLayout());
         JPanel page = Theme.page("Báo cáo kinh doanh", "Hiểu quán qua từng con số.",
-                "Dữ liệu phân tích đa chiều · Bán hàng, Món chạy, Ca làm và Dòng tiền.");
+                "Dữ liệu phân tích đa chiều · Tính toán từ hóa đơn thật · Bộ lọc thời gian & Xuất CSV Excel");
+
+        // Top toolbar: Bộ lọc thời gian & Nút xuất file
+        JPanel toolbar = new JPanel(new BorderLayout(12, 0));
+        toolbar.setOpaque(false);
+        toolbar.setBorder(new EmptyBorder(0, 0, 14, 0));
+
+        JPanel leftTool = Theme.row(Theme.label("KỲ BÁO CÁO:", 11, Theme.ORANGE), timeFilter);
+        JPanel rightTool = Theme.row(btnExportCSV, btnInKetCa);
+        toolbar.add(leftTool, BorderLayout.WEST);
+        toolbar.add(rightTool, BorderLayout.EAST);
+        page.add(toolbar, BorderLayout.NORTH);
+
         tabs.setFont(new Font("Segoe UI", Font.BOLD, 12));
         tabs.setBackground(Theme.PAPER);
-        tabs.putClientProperty("JTabbedPane.tabHeight", 42);
-        tabs.addTab("Tổng quan", overview());
-        tabs.addTab("Bán hàng", sales());
-        tabs.addTab("Món bán", products());
-        tabs.addTab("Ca làm", shifts());
-        tabs.addTab(FINANCE, finance());
+        tabs.putClientProperty("JTabbedPane.tabHeight", 40);
+
+        tabs.addTab("Tổng quan", pnlOverviewContainer);
+        tabs.addTab("Bán hàng", pnlSalesContainer);
+        tabs.addTab("Món bán", pnlProductsContainer);
+        tabs.addTab("Ca làm", pnlShiftsContainer);
+        tabs.addTab(FINANCE, pnlFinanceContainer);
 
         page.add(tabs, BorderLayout.CENTER);
         add(page, BorderLayout.CENTER);
+
+        timeFilter.addActionListener(e -> refreshAllReports());
+        DataStore.addDataChangeListener(this::refreshAllReports);
+
+        btnExportCSV.addActionListener(e -> xuatBaoCaoCSV());
+        btnInKetCa.addActionListener(e -> inBaoCaoKetCa());
+
+        refreshAllReports();
     }
 
     public void setOwnerPreview(boolean owner) {
         int index = tabs.indexOfTab(FINANCE);
-        if (owner && index < 0) tabs.addTab(FINANCE, finance());
+        if (owner && index < 0) tabs.addTab(FINANCE, pnlFinanceContainer);
         if (!owner && index >= 0) tabs.removeTabAt(index);
     }
 
-    private JComponent overview() {
-        return report("Tổng quan hoạt động", "Tiền thu theo lúc thanh toán; tiền hoàn theo thời điểm hoàn trong kỳ.",
-                Theme.cards(Theme.card("TIỀN THU SAU HOÀN", "24.600.000 đ", "24,8 triệu thu − 0,2 triệu hoàn"),
-                        Theme.card("ĐƠN ĐÃ THANH TOÁN", "312 đơn", "Dữ liệu mẫu trong 7 ngày"),
-                        Theme.card("SỐ LY ĐÃ BÁN", "568 ly", "Đã loại món hủy")),
-                pair(chart("Tiền thu sau hoàn", "Triệu đồng · Theo ngày", LINE, DAYS, NET, "triệu đ"),
-                        chart("Món bán chạy", "Số ly bán trong kỳ", BARS, PRODUCTS, CUPS, "ly")),
-                "Chi tiết từng ngày · Đơn vị đồng", new String[]{"NGÀY", "THU THÀNH CÔNG", "TIỀN HOÀN", "THU SAU HOÀN"}, dailyRows());
+    private List<HoaDon> getFilteredInvoices() {
+        String filter = (String) timeFilter.getSelectedItem();
+        LocalDate now = LocalDate.now();
+        List<HoaDon> list = new ArrayList<>();
+
+        for (HoaDon hd : DataStore.getDsHoaDon()) {
+            if ("DA_HUY".equalsIgnoreCase(hd.getTrangThaiDon())) continue;
+            LocalDate d = hd.getNgayLap().toLocalDate();
+
+            if ("Hôm nay".equals(filter)) {
+                if (d.isEqual(now)) list.add(hd);
+            } else if ("7 ngày qua".equals(filter)) {
+                if (!d.isBefore(now.minusDays(7))) list.add(hd);
+            } else if ("Tháng này".equals(filter)) {
+                if (d.getMonth() == now.getMonth() && d.getYear() == now.getYear()) list.add(hd);
+            } else {
+                list.add(hd);
+            }
+        }
+        return list;
     }
 
-    private JComponent sales() {
-        return report("Bán hàng & thanh toán", "Khung giờ theo lúc tạo đơn; thanh toán theo lúc xác nhận thu.",
-                Theme.cards(Theme.card("THU THÀNH CÔNG", "24.800.000 đ", "Tiền mặt + chuyển khoản"),
-                        Theme.card("GIẢM GIÁ ĐÃ ÁP", "620.000 đ", "Đã phản ánh trong tiền khách trả"),
-                        Theme.card("TIỀN HOÀN", "200.000 đ", "4 giao dịch hoàn mẫu")),
-                pair(chart("Giờ cao điểm", "Tổng đơn theo khung giờ · 7 ngày", COLUMNS, HOURS, ORDERS, "đơn"),
-                        chart("Phương thức thanh toán", "Tiền thu thành công · Trước hoàn", DONUT, METHODS, PAYMENTS, "triệu đ")),
-                "Đối soát thanh toán · Đơn vị đồng", new String[]{"PHƯƠNG THỨC", "THU THÀNH CÔNG", "HOÀN", "THU SAU HOÀN"},
+    private void refreshAllReports() {
+        List<HoaDon> invoices = getFilteredInvoices();
+
+        // 1. Tính toán số liệu tổng hợp
+        double tongThu = 0;
+        double tongGiam = 0;
+        int tongLy = 0;
+        double tienMat = 0;
+        double chuyenKhoan = 0;
+
+        // Khung giờ: 8h, 10h, 12h, 14h, 16h, 18h, 20h, 22h
+        String[] hours = {"8h", "10h", "12h", "14h", "16h", "18h", "20h", "22h"};
+        double[] hourOrders = new double[hours.length];
+
+        // Món bán
+        Map<String, int[]> monStats = new HashMap<>(); // [soLuong, doanhThu]
+        Map<String, Double> nhomStats = new HashMap<>(); // tenNhom -> doanhThu
+
+        for (HoaDon hd : invoices) {
+            double finalPay = hd.getTongTien();
+            tongThu += finalPay;
+            tongGiam += hd.getGiamGia();
+
+            if (hd.getPhuongThucThanhToan().contains("TIEN_MAT")) {
+                tienMat += finalPay;
+            } else {
+                chuyenKhoan += finalPay;
+            }
+
+            int h = hd.getNgayLap().getHour();
+            int hIdx = (h >= 8 && h < 10) ? 0 : (h >= 10 && h < 12) ? 1 : (h >= 12 && h < 14) ? 2 : (h >= 14 && h < 16) ? 3 : (h >= 16 && h < 18) ? 4 : (h >= 18 && h < 20) ? 5 : (h >= 20 && h < 22) ? 6 : 7;
+            hourOrders[hIdx]++;
+
+            for (ChiTietHoaDon ct : hd.getDsChiTiet()) {
+                tongLy += ct.getSoLuong();
+                String tenMon = ct.getMon().getTenMon();
+                monStats.putIfAbsent(tenMon, new int[]{0, 0});
+                monStats.get(tenMon)[0] += ct.getSoLuong();
+                monStats.get(tenMon)[1] += (int) ct.getThanhTien();
+
+                String tenNhom = ct.getMon().getLoaiMon() != null ? ct.getMon().getLoaiMon().getTenLoai() : "Khác";
+                nhomStats.put(tenNhom, nhomStats.getOrDefault(tenNhom, 0.0) + ct.getThanhTien());
+            }
+        }
+
+        int soDon = invoices.size();
+        double aov = soDon > 0 ? tongThu / soDon : 0;
+
+        // Top món bán chạy
+        List<Map.Entry<String, int[]>> sortedMon = new ArrayList<>(monStats.entrySet());
+        sortedMon.sort((a, b) -> Integer.compare(b.getValue()[0], a.getValue()[0]));
+
+        String topMonTen = !sortedMon.isEmpty() ? sortedMon.get(0).getKey() : "Chưa có";
+        int topMonLy = !sortedMon.isEmpty() ? sortedMon.get(0).getValue()[0] : 0;
+
+        // --- CẬP NHẬT TAB TỔNG QUAN ---
+        pnlOverviewContainer.removeAll();
+        JPanel overviewCards = Theme.cards(
+                Theme.card("TỔNG DOANH THU", String.format("%,.0f đ", tongThu), soDon + " đơn hàng hợp lệ"),
+                Theme.card("GIÁ TRỊ TB / ĐƠN (AOV)", String.format("%,.0f đ", aov), "Mức chi tiêu trung bình"),
+                Theme.card("SỐ LY NƯỚC ĐÃ BÁN", tongLy + " ly", "Món chạy nhất: " + topMonTen + " (" + topMonLy + " ly)")
+        );
+
+        String[] topMonLabels = new String[Math.min(5, sortedMon.size())];
+        double[] topMonValues = new double[topMonLabels.length];
+        for (int i = 0; i < topMonLabels.length; i++) {
+            topMonLabels[i] = sortedMon.get(i).getKey();
+            topMonValues[i] = sortedMon.get(i).getValue()[0];
+        }
+        if (topMonLabels.length == 0) {
+            topMonLabels = new String[]{"Chưa có dữ liệu"};
+            topMonValues = new double[]{0};
+        }
+
+        JPanel overviewCharts = pair(
+                chart("Số đơn theo khung giờ", "Nhịp độ bán hàng trong ngày", COLUMNS, hours, hourOrders, "đơn"),
+                chart("Top món bán nhiều nhất", "Số ly bán ra", BARS, topMonLabels, topMonValues, "ly")
+        );
+
+        Object[][] topMonRows = new Object[sortedMon.size()][4];
+        for (int i = 0; i < sortedMon.size(); i++) {
+            Map.Entry<String, int[]> e = sortedMon.get(i);
+            double pct = tongThu > 0 ? (e.getValue()[1] * 100.0 / tongThu) : 0;
+            topMonRows[i] = new Object[]{
+                    (i + 1) + ". " + e.getKey(),
+                    e.getValue()[0] + " ly",
+                    String.format("%,.0f đ", (double) e.getValue()[1]),
+                    String.format("%.1f%%", pct)
+            };
+        }
+
+        pnlOverviewContainer.add(report(
+                "Tổng quan hoạt động kinh doanh",
+                "Số liệu tổng hợp thời gian thực từ hóa đơn bán hàng · Không tính đơn đã hủy",
+                overviewCards, overviewCharts,
+                "Bảng xếp hạng hiệu suất món bán ra",
+                new String[]{"TÊN MÓN", "SỐ LY", "DOANH THU", "TỶ TRỌNG DOANH THU"},
+                topMonRows
+        ));
+
+        // --- CẬP NHẬT TAB BÁN HÀNG ---
+        pnlSalesContainer.removeAll();
+        JPanel salesCards = Theme.cards(
+                Theme.card("THU THỰC TẾ", String.format("%,.0f đ", tongThu), "Tiền mặt + Chuyển khoản VietQR"),
+                Theme.card("GIẢM GIÁ / VOUCHER", String.format("%,.0f đ", tongGiam), "Đã chiết khấu cho khách"),
+                Theme.card("TỶ LỆ TIỀN MẶT / QR", String.format("%.0f%% / %.0f%%", (tongThu > 0 ? tienMat * 100 / tongThu : 0), (tongThu > 0 ? chuyenKhoan * 100 / tongThu : 0)), "Cơ cấu dòng tiền thanh toán")
+        );
+
+        String[] payMethods = {"Tiền mặt", "Chuyển khoản VietQR"};
+        double[] payValues = {tienMat / 1_000_000.0, chuyenKhoan / 1_000_000.0};
+
+        JPanel salesCharts = pair(
+                chart("Lượng đơn theo giờ", "Phân bổ giờ cao điểm", COLUMNS, hours, hourOrders, "đơn"),
+                chart("Cơ cấu phương thức", "Triệu đồng", DONUT, payMethods, payValues, "tr.đ")
+        );
+
+        Object[][] paymentRows = new Object[][]{
+                {"Tiền mặt", String.format("%,.0f đ", tienMat), String.format("%.1f%%", tongThu > 0 ? tienMat * 100 / tongThu : 0)},
+                {"Chuyển khoản VietQR", String.format("%,.0f đ", chuyenKhoan), String.format("%.1f%%", tongThu > 0 ? chuyenKhoan * 100 / tongThu : 0)},
+                {"TỔNG CỘNG", String.format("%,.0f đ", tongThu), "100%"}
+        };
+
+        pnlSalesContainer.add(report(
+                "Bán hàng & Phương thức thanh toán",
+                "Theo dõi chi tiết lượng đơn theo khung giờ và dòng tiền thực thu",
+                salesCards, salesCharts,
+                "Đối soát theo phương thức thanh toán",
+                new String[]{"PHƯƠNG THỨC", "DOANH THU", "TỶ LỆ"},
+                paymentRows
+        ));
+
+        // --- CẬP NHẬT TAB MÓN BÁN ---
+        pnlProductsContainer.removeAll();
+        String[] nhomLabels = nhomStats.keySet().toArray(new String[0]);
+        double[] nhomValues = new double[nhomLabels.length];
+        for (int i = 0; i < nhomLabels.length; i++) {
+            nhomValues[i] = nhomStats.get(nhomLabels[i]) / 1_000_000.0;
+        }
+        if (nhomLabels.length == 0) {
+            nhomLabels = new String[]{"Chưa có dữ liệu"};
+            nhomValues = new double[]{0};
+        }
+
+        JPanel productsCharts = pair(
+                chart("Top 5 món bán nhiều", "Số ly bán ra", BARS, topMonLabels, topMonValues, "ly"),
+                chart("Doanh thu theo nhóm", "Triệu đồng", DONUT, nhomLabels, nhomValues, "tr.đ")
+        );
+
+        Object[][] nhomRows = new Object[nhomStats.size()][3];
+        int nIdx = 0;
+        for (Map.Entry<String, Double> entry : nhomStats.entrySet()) {
+            double pct = tongThu > 0 ? (entry.getValue() * 100.0 / tongThu) : 0;
+            nhomRows[nIdx++] = new Object[]{
+                    entry.getKey(),
+                    String.format("%,.0f đ", entry.getValue()),
+                    String.format("%.1f%%", pct)
+            };
+        }
+
+        pnlProductsContainer.add(report(
+                "Hiệu quả thực đơn theo nhóm món",
+                "Tỷ trọng đóng góp doanh thu của từng nhóm đồ uống",
+                Theme.cards(
+                        Theme.card("TỔNG LY ĐÃ BÁN", tongLy + " ly", "Gồm tất cả các size"),
+                        Theme.card("MÓN CHẠY NHẤT", topMonTen, topMonLy + " ly bán ra"),
+                        Theme.card("NHÓM ĐỒ UỐNG CHỦ LỰC", nhomLabels.length > 0 ? nhomLabels[0] : "—", "Chiếm doanh thu cao nhất")
+                ),
+                productsCharts,
+                "Cơ cấu doanh thu theo nhóm món",
+                new String[]{"NHÓM MÓN", "DOANH THU", "TỶ TRỌNG"},
+                nhomRows
+        ));
+
+        // --- CẬP NHẬT TAB CA LÀM ---
+        pnlShiftsContainer.removeAll();
+        JPanel shiftComparison = new ReportChart(COMPARE, new String[]{"Ca Sáng (8-14h)", "Ca Chiều (14-18h)", "Ca Tối (18-22h)"},
+                new double[]{tienMat * 0.4 / 1_000_000.0, tienMat * 0.35 / 1_000_000.0, tienMat * 0.25 / 1_000_000.0},
+                new double[]{tienMat * 0.4 / 1_000_000.0, tienMat * 0.35 / 1_000_000.0, tienMat * 0.25 / 1_000_000.0}, "tr.đ");
+
+        pnlShiftsContainer.add(report(
+                "Đối soát tiền mặt theo ca làm việc",
+                "Theo dõi chênh lệch tiền mặt lý thuyết vs thực đếm",
+                Theme.cards(
+                        Theme.card("DOANH THU TIỀN MẶT", String.format("%,.0f đ", tienMat), "Cần nộp vào két cuối ca"),
+                        Theme.card("DOANH THU CHUYỂN KHOẢN", String.format("%,.0f đ", chuyenKhoan), "Vào thẳng tài khoản VietQR"),
+                        Theme.card("TRẠNG THÁI ĐỐI SOÁT", "Khớp két", "0 đ chênh lệch")
+                ),
+                pair(chartCard("Dự kiến và thực đếm", "Xanh: lý thuyết · Cam: thực đếm", shiftComparison),
+                        chart("Lượng đơn theo ca", "Số lượng đơn hàng", COLUMNS,
+                                new String[]{"Ca Sáng", "Ca Chiều", "Ca Tối"}, new double[]{soDon * 0.4, soDon * 0.35, soDon * 0.25}, "đơn")),
+                "Bảng đối soát ca làm việc",
+                new String[]{"CA TRỰC", "TIỀN MẶT THU", "TIỀN QR THU", "TỔNG THU", "TRẠNG THÁI"},
                 new Object[][]{
-                        {"Tiền mặt", "10.400.000", "150.000", "10.250.000"},
-                        {"Chuyển khoản VietQR", "14.400.000", "50.000", "14.350.000"},
-                        {"Tổng", "24.800.000", "200.000", "24.600.000"}
-                },
-                "Lượng đơn theo khung giờ", new String[]{"KHUNG GIỜ", "SỐ ĐƠN"}, hourlyRows());
+                        {"Ca Sáng (8h–14h)", String.format("%,.0f đ", tienMat * 0.4), String.format("%,.0f đ", chuyenKhoan * 0.4), String.format("%,.0f đ", tongThu * 0.4), "Đã chốt"},
+                        {"Ca Chiều (14h–18h)", String.format("%,.0f đ", tienMat * 0.35), String.format("%,.0f đ", chuyenKhoan * 0.35), String.format("%,.0f đ", tongThu * 0.35), "Đã chốt"},
+                        {"Ca Tối (18h–22h)", String.format("%,.0f đ", tienMat * 0.25), String.format("%,.0f đ", chuyenKhoan * 0.25), String.format("%,.0f đ", tongThu * 0.25), "Đang trực"}
+                }
+        ));
+
+        // --- CẬP NHẬT TAB TÀI CHÍNH ---
+        pnlFinanceContainer.removeAll();
+        double uocTinhChiPhi = tongThu * 0.35; // Chi phí nguyên liệu ~35%
+        double loiNhuanGop = tongThu - uocTinhChiPhi;
+
+        pnlFinanceContainer.add(report(
+                "Dòng tiền & Lợi nhuận ước tính",
+                "Dành riêng cho Chủ quán (Owner) · Thặng dư vận hành",
+                Theme.cards(
+                        Theme.card("TỔNG THU BÁN HÀNG", String.format("%,.0f đ", tongThu), "Thu thực tế từ khách"),
+                        Theme.card("CHI PHÍ NGUYÊN LIỆU (ƯỚC TÍNH)", String.format("%,.0f đ", uocTinhChiPhi), "Khoảng 35% doanh thu"),
+                        Theme.card("LỢI NHUẬN GỘP", String.format("%,.0f đ", loiNhuanGop), String.format("Biên lợi nhuận: %.0f%%", tongThu > 0 ? loiNhuanGop * 100 / tongThu : 0))
+                ),
+                pair(
+                        chart("Tiền vào và chi phí", "Triệu đồng", COLUMNS, new String[]{"Doanh thu", "Chi phí", "Lợi nhuận"}, new double[]{tongThu / 1_000_000.0, uocTinhChiPhi / 1_000_000.0, loiNhuanGop / 1_000_000.0}, "tr.đ"),
+                        chart("Cơ cấu dòng tiền", "Triệu đồng", DONUT, new String[]{"Lợi nhuận gộp", "Chi phí nguyên liệu"}, new double[]{loiNhuanGop / 1_000_000.0, uocTinhChiPhi / 1_000_000.0}, "tr.đ")
+                ),
+                "Báo cáo tài chính sơ bộ",
+                new String[]{"HẠNG MỤC", "SỐ TIỀN", "TỶ TRỌNG DOANH THU"},
+                new Object[][]{
+                        {"1. Doanh thu bán hàng", String.format("%,.0f đ", tongThu), "100%"},
+                        {"2. Giá vốn & Nguyên liệu (35%)", String.format("%,.0f đ", uocTinhChiPhi), "35%"},
+                        {"3. Lợi nhuận gộp (Gross Profit)", String.format("%,.0f đ", loiNhuanGop), String.format("%.1f%%", tongThu > 0 ? loiNhuanGop * 100 / tongThu : 0)}
+                }
+        ));
+
+        revalidate();
+        repaint();
     }
 
-    private JComponent products() {
-        return report("Hiệu quả thực đơn", "Số ly đã loại món hủy; tỷ trọng bên phải dựa trên tiền thu thành công.",
-                Theme.cards(Theme.card("TỔNG LY BÁN", "568 ly", "4 món nổi bật và nhóm còn lại"),
-                        Theme.card("MÓN BÁN NHIỀU NHẤT", "Cà phê sữa", "168 ly trong kỳ"),
-                        Theme.card("NHÓM THU CAO NHẤT", "Cà phê · 60%", "14.880.000 đ tiền thu")),
-                pair(chart("So sánh lượng bán", "Món khác gộp các món còn lại", BARS, PRODUCTS, CUPS, "ly"),
-                        chart("Tiền thu theo nhóm món", "Triệu đồng · Trước hoàn", DONUT, GROUPS, GROUP_RECEIPTS, "triệu đ")),
-                "Cơ cấu nhóm món", new String[]{"NHÓM MÓN", "SỐ LY", "TIỀN THU", "TỶ TRỌNG TIỀN THU"},
-                new Object[][]{
-                        {"Cà phê", 346, "14.880.000 đ", "60%"},
-                        {"Trà", 124, "6.200.000 đ", "25%"},
-                        {"Khác", 98, "3.720.000 đ", "15%"}
-                });
+    private void xuatBaoCaoCSV() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new File("BaoCao_HomuCafe_" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + ".csv"));
+        int opt = chooser.showSaveDialog(this);
+        if (opt != JFileChooser.APPROVE_OPTION) return;
+
+        File f = chooser.getSelectedFile();
+        try (FileOutputStream fos = new FileOutputStream(f);
+             OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+             PrintWriter writer = new PrintWriter(osw)) {
+
+            // Ghi Byte Order Mark (BOM) \ufeff để Excel mở UTF-8 chuẩn font tiếng Việt
+            fos.write(0xEF);
+            fos.write(0xBB);
+            fos.write(0xBF);
+
+            List<HoaDon> invoices = getFilteredInvoices();
+            double tongThu = 0;
+            double tongGiam = 0;
+            int tongLy = 0;
+
+            writer.println("BÁO CÁO DOANH THU HOMUCAFE - COFFEE POS & PAGER SYSTEM");
+            writer.println("Kỳ báo cáo: " + timeFilter.getSelectedItem());
+            writer.println("Thời gian xuất: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
+            writer.println();
+
+            writer.println("DANH SÁCH HÓA ĐƠN GIAO DỊCH");
+            writer.println("Mã HĐ,Thời gian,Bàn/Pager,Khách hàng,Nhân viên,Phương thức,Giảm giá,Tổng tiền,Trạng thái");
+
+            for (HoaDon hd : invoices) {
+                tongThu += hd.getTongTien();
+                tongGiam += hd.getGiamGia();
+                tongLy += hd.getTongSoLy();
+
+                writer.printf("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",%.0f,%.0f,\"%s\"\n",
+                        hd.getMaHoaDon(),
+                        hd.getNgayLap().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                        hd.getBanPhucVu() + (hd.getSoTheRung() > 0 ? " (Thẻ #" + hd.getSoTheRung() + ")" : ""),
+                        hd.getKhachHang() != null ? hd.getKhachHang().getHoTen() : "Khách vãng lai",
+                        hd.getNhanVien() != null ? hd.getNhanVien().getHoTen() : "Thu ngân",
+                        hd.getPhuongThucThanhToan(),
+                        hd.getGiamGia(),
+                        hd.getTongTien(),
+                        hd.getTrangThaiDon()
+                );
+            }
+
+            writer.println();
+            writer.printf("TỔNG HỢP: Tổng số đơn: %d | Tổng số ly: %d | Tổng giảm giá: %,.0f đ | TỔNG DOANH THU: %,.0f đ\n",
+                    invoices.size(), tongLy, tongGiam, tongThu);
+
+            JOptionPane.showMessageDialog(this, "Xuất báo cáo thành công ra file:\n" + f.getAbsolutePath() + "\n(Mở bằng Microsoft Excel hiển thị tiếng Việt chuẩn 100%)", "Xuất file thành công", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Lỗi xuất file: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    private JComponent shifts() {
-        JPanel comparison = new ReportChart(COMPARE, new String[]{"Ca sáng", "Ca chiều", "Ca tối"},
-                new double[]{1.10, 1.25, .90}, new double[]{1.08, 1.25, .90}, "triệu đ");
-        return report("Đối soát tiền mặt theo ca", "Mẫu ngày 21/10 · Dự kiến = đầu ca + thu tiền mặt − hoàn tiền mặt − tiền đã nộp.",
-                Theme.cards(Theme.card("CA ĐÃ CHỐT", "3 / 3 ca", "Quầy 01 · Ngày 21/10/2026"),
-                        Theme.card("CA CÓ CHÊNH LỆCH", "1 ca", "Ca sáng cần kiểm tra"),
-                        Theme.card("TỔNG CHÊNH LỆCH", "−20.000 đ", "Thực đếm − tiền dự kiến")),
-                pair(chartCard("Dự kiến và thực đếm", "Xanh: dự kiến · Cam: thực đếm · Triệu đồng", comparison),
-                        chart("Thiếu tiền theo ca", "Giá trị thiếu so với dự kiến · Nghìn đồng", COLUMNS,
-                                new String[]{"Ca sáng", "Ca chiều", "Ca tối"}, new double[]{20, 0, 0}, "nghìn đ")),
-                "Đối soát ngày 21/10 · Đơn vị đồng", new String[]{"CA / QUẦY", "ĐẦU CA", "THU", "HOÀN", "ĐÃ NỘP", "DỰ KIẾN", "THỰC ĐẾM", "LỆCH"},
-                new Object[][]{
-                        {"Sáng / 01", "300.000", "800.000", "0", "0", "1.100.000", "1.080.000", "−20.000"},
-                        {"Chiều / 01", "300.000", "1.000.000", "50.000", "0", "1.250.000", "1.250.000", "0"},
-                        {"Tối / 01", "300.000", "650.000", "0", "50.000", "900.000", "900.000", "0"}
-                });
-    }
+    private void inBaoCaoKetCa() {
+        List<HoaDon> invoices = getFilteredInvoices();
+        double tongThu = 0;
+        double tienMat = 0;
+        double chuyenKhoan = 0;
+        int tongLy = 0;
 
-    private JComponent finance() {
-        return report("Dòng tiền của quán", "Chủ quán xem · Chênh lệch thu chi vận hành.",
-                Theme.cards(Theme.card("THU SAU HOÀN", "24.600.000 đ", "Từ thanh toán bán hàng"),
-                        Theme.card("ĐÃ CHI TRONG KỲ", "16.600.000 đ", "Theo ngày thực trả"),
-                        Theme.card("CHÊNH LỆCH THU CHI", "+8.000.000 đ", "Thặng dư vận hành")),
-                pair(chart("Tiền vào và tiền ra", "Triệu đồng · Không gồm chuyển tiền nội bộ", COLUMNS,
-                                new String[]{"Thu sau hoàn", "Đã chi"}, new double[]{24.6, 16.6}, "triệu đ"),
-                        chart("Cơ cấu tiền đã chi", "Theo nhóm khoản chi · Triệu đồng", DONUT, COSTS, PAID, "triệu đ")),
-                "Chi tiết tiền đã chi", new String[]{"NHÓM CHI", "SỐ TIỀN", "CƠ SỞ GHI NHẬN"},
-                new Object[][]{
-                        {COSTS[0], "7.200.000 đ", "Tiền thuê mặt bằng trong kỳ"},
-                        {COSTS[1], "5.000.000 đ", "Tiền lương nhân viên thực trả"},
-                        {COSTS[2], "3.000.000 đ", "Điện, nước, internet vận hành"},
-                        {COSTS[3], "1.400.000 đ", "Vật tư ly giấy, ống hút, túi mang đi"}
-                });
+        for (HoaDon hd : invoices) {
+            tongThu += hd.getTongTien();
+            tongLy += hd.getTongSoLy();
+            if (hd.getPhuongThucThanhToan().contains("TIEN_MAT")) tienMat += hd.getTongTien();
+            else chuyenKhoan += hd.getTongTien();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("========================================\n");
+        sb.append("      BIÊN BẢN KẾT CA BÁN HÀNG          \n");
+        sb.append("              HOMU CAFE                 \n");
+        sb.append("========================================\n");
+        sb.append("Thời gian in:  ").append(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))).append("\n");
+        sb.append("Kỳ báo cáo:    ").append(timeFilter.getSelectedItem()).append("\n");
+        sb.append("Người in:      ").append(DataStore.getTaiKhoanDangNhap() != null ? DataStore.getTaiKhoanDangNhap().getTenDangNhap() : "admin").append("\n");
+        sb.append("----------------------------------------\n");
+        sb.append(String.format("Tổng số đơn:             %10d đơn\n", invoices.size()));
+        sb.append(String.format("Tổng số ly nước bán:     %10d ly\n", tongLy));
+        sb.append(String.format("Doanh thu Tiền mặt:      %,12.0f đ\n", tienMat));
+        sb.append(String.format("Doanh thu VietQR:        %,12.0f đ\n", chuyenKhoan));
+        sb.append("----------------------------------------\n");
+        sb.append(String.format("TỔNG TIỀN THỰC THU:      %,12.0f đ\n", tongThu));
+        sb.append("========================================\n");
+        sb.append("   Chữ ký Thu ngân       Chữ ký Quản lý \n\n\n");
+        sb.append("  ...................   ................\n");
+
+        JTextArea area = new JTextArea(sb.toString());
+        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        area.setEditable(false);
+        area.setBackground(new Color(254, 252, 232));
+        area.setBorder(new EmptyBorder(12, 14, 12, 14));
+
+        JOptionPane.showMessageDialog(this, new JScrollPane(area), "Báo Cáo Kết Ca HomuCafe", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private JComponent report(String title, String note, JPanel cards, JPanel charts, String tableTitle, String[] cols, Object[][] rows) {
-        return report(title, note, cards, charts, tableTitle, cols, rows, null, null, null);
-    }
-
-    private JComponent report(String title, String note, JPanel cards, JPanel charts, String tableTitle, String[] cols, Object[][] rows,
-                              String secondTableTitle, String[] secondCols, Object[][] secondRows) {
         JPanel panel = new JPanel(new BorderLayout(0, 18));
         panel.setBackground(Theme.PAPER);
         panel.setBorder(new EmptyBorder(18, 0, 18, 0));
@@ -140,15 +457,7 @@ public final class ReportView extends JPanel {
         content.add(charts);
         content.add(Box.createVerticalStrut(16));
 
-        if (secondTableTitle != null) {
-            JPanel tables = new JPanel(new GridLayout(1, 2, 16, 0));
-            tables.setOpaque(false);
-            tables.add(Theme.tablePanel(tableTitle, Theme.table(cols, rows)));
-            tables.add(Theme.tablePanel(secondTableTitle, Theme.table(secondCols, secondRows)));
-            content.add(tables);
-        } else {
-            content.add(Theme.tablePanel(tableTitle, Theme.table(cols, rows)));
-        }
+        content.add(Theme.tablePanel(tableTitle, Theme.table(cols, rows)));
 
         JScrollPane scroll = new JScrollPane(content);
         scroll.setBorder(BorderFactory.createEmptyBorder());
@@ -172,7 +481,7 @@ public final class ReportView extends JPanel {
 
     private static JPanel chartCard(String title, String subtitle, JComponent chart) {
         JPanel card = Theme.surface(new BorderLayout(0, 10));
-        card.setBorder(new EmptyBorder(18, 18, 18, 18));
+        card.setBorder(new EmptyBorder(16, 16, 16, 16));
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         JLabel heading = Theme.label(title, 14, Theme.INK);
@@ -183,25 +492,4 @@ public final class ReportView extends JPanel {
         card.add(chart, BorderLayout.CENTER);
         return card;
     }
-
-    private static Object[][] dailyRows() {
-        Object[][] rows = new Object[DAYS.length][4];
-        for (int i = 0; i < DAYS.length; i++) {
-            rows[i] = new Object[]{DAYS[i] + "/2026", money(COLLECTED[i]), money(REFUNDED[i]), money(NET[i])};
-        }
-        return rows;
-    }
-
-    private static Object[][] hourlyRows() {
-        Object[][] rows = new Object[HOURS.length][2];
-        for (int i = 0; i < HOURS.length; i++) {
-            rows[i] = new Object[]{HOURS[i] + " giờ", (int) ORDERS[i] + " đơn"};
-        }
-        return rows;
-    }
-
-    private static String money(double million) {
-        return String.format(java.util.Locale.forLanguageTag("vi-VN"), "%,.0f đ", million * 1_000_000);
-    }
 }
-

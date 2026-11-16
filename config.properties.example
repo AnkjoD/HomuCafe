@@ -1,0 +1,15 @@
+# ==============================================================================
+# CẤU HÌNH NGOÀI CHO HOMUCAFE POS (TÙY CHỌN KHI TRIỂN KHAI QUÁN THẬT)
+# Hướng dẫn: Copy file này thành "config.properties" đặt cùng thư mục với file .jar
+# ==============================================================================
+
+# 1. Kết nối SQL Server
+db.url=jdbc:sqlserver://localhost:1433;databaseName=QuanLyCoffeePOS_HomuCafe;trustServerCertificate=true
+db.user=sa
+db.password=sapassword
+
+# 2. Tài khoản ngân hàng nhận tiền VietQR (Tùy chọn - mặc định VCB)
+bank.bin=VCB
+bank.account=0123456789
+bank.name=Vietcombank (VCB)
+bank.owner=HOMU CAFE COFFEE POS

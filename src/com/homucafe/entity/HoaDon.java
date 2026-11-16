@@ -24,6 +24,8 @@ public class HoaDon {
     private NhanVien nhanVien;
     private KhachHang khachHang;
     private Object voucher;
+    private String maVoucher;
+    private String ghiChu;
     private List<ChiTietHoaDon> dsChiTiet = new ArrayList<>();
 
     public HoaDon() {
@@ -232,6 +234,27 @@ public class HoaDon {
 
     public void setVoucher(Object voucher) {
         this.voucher = voucher;
+        if (voucher != null) {
+            this.maVoucher = voucher.toString();
+        }
+    }
+
+    public String getMaVoucher() {
+        if (maVoucher != null) return maVoucher;
+        if (voucher != null) return voucher.toString();
+        return null;
+    }
+
+    public void setMaVoucher(String maVoucher) {
+        this.maVoucher = maVoucher;
+    }
+
+    public String getGhiChu() {
+        return ghiChu;
+    }
+
+    public void setGhiChu(String ghiChu) {
+        this.ghiChu = ghiChu;
     }
 
     public List<ChiTietHoaDon> getDsChiTiet() {

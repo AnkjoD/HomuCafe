@@ -1,36 +1,35 @@
 package com.homucafe.voucher;
 
-import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import com.homucafe.entity.Voucher;
+import com.homucafe.shared.ui.Theme;
+import com.homucafe.util.DataStore;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
-import com.homucafe.shared.ui.Theme;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
- * Giao diện quản lý Voucher & Mã giảm giá theo phong cách HomuCafe.
- * Cho phép chỉnh sửa trực tiếp trên bảng và nhấp chuyển đổi trạng thái "Đang sử dụng" / "Không sử dụng".
+ * Giao diện quản lý Voucher & Mã giảm giá HomuCafe.
+ * Kết nối đồng bộ 100% với DataStore & Voucher_DAO để POS sử dụng tức thì.
  */
 public final class VoucherView extends JPanel {
     private final JTextField searchField = new JTextField();
     private final JComboBox<String> statusFilter = new JComboBox<>(new String[]{
             "Tất cả trạng thái", "Đang sử dụng", "Không sử dụng"});
     private final JButton createButton = Theme.button("+ Tạo mã giảm giá", true);
-    private final JButton editButton = Theme.button("Xem / sửa mã", false);
     private final JButton toggleButton = Theme.button("Đổi trạng thái sử dụng", false);
 
-    private final String[] cols = {"MÃ VOUCHER", "ƯU ĐÃI", "ĐƠN TỐI THIỂU", "GIẢM TỐI ĐA", "ĐÃ DÙNG / GIỚI HẠN", "THỜI GIAN", "TRẠNG THÁI"};
-    private final DefaultTableModel voucherModel = new DefaultTableModel(
-            new Object[][]{
-                    {"HOMU10", "Giảm 10%", "100.000 đ", "30.000 đ", "15 / 100", "01–31/10/2026", "Đang sử dụng"},
-                    {"CHIEUVUI", "Giảm 15.000 đ", "80.000 đ", "—", "30 / 200", "01–31/10/2026", "Đang sử dụng"},
-                    {"WELCOME20", "Giảm 20%", "150.000 đ", "40.000 đ", "0 / 80", "01–30/11/2026", "Đang sử dụng"},
-                    {"HOMUOLD", "Giảm 10.000 đ", "60.000 đ", "—", "80 / 80", "01–30/09/2026", "Không sử dụng"}
-            }, cols) {
+    private final String[] cols = {"MÃ VOUCHER", "HÌNH THỨC", "GIÁ TRỊ GIẢM", "ĐƠN TỐI THIỂU", "GIẢM TỐI ĐA", "ĐÃ DÙNG / GIỚI HẠN", "TRẠNG THÁI"};
+    private final DefaultTableModel voucherModel = new DefaultTableModel(cols, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
-            return column > 0 && column != 6; // Cột mã khóa, cột trạng thái click toggle, các cột khác sửa trực tiếp
+            return false;
         }
     };
     private final JTable voucherTable;
@@ -41,23 +40,22 @@ public final class VoucherView extends JPanel {
         voucherTable.setModel(voucherModel);
 
         JPanel page = Theme.page("Ưu đãi & khuyến mãi", "Một ưu đãi, thêm một lần ghé.",
-                "Quản lý voucher theo mã, điều kiện đơn hàng. Nhấp đúp ô để sửa trực tiếp hoặc nhấp cột Trạng thái để bật/tắt nhanh.");
+                "Quản lý voucher theo mã, điều kiện đơn hàng. Nhấp cột Trạng thái để bật/tắt nhanh mã giảm giá.");
         JPanel body = new JPanel(new BorderLayout(0, 20));
         body.setOpaque(false);
+
         JPanel statistics = Theme.cards(
-                Theme.card("MÃ ĐANG HOẠT ĐỘNG", "3", "Số liệu để áp dụng đơn hàng"),
-                Theme.card("LƯỢT SỬ DỤNG", "125", "45 lượt ở các mã đang hoạt động"),
-                Theme.card("HÌNH THỨC ƯU ĐÃI", "% / số tiền", "Chọn một mã cho mỗi đơn"));
+                Theme.card("MÃ ĐANG HOẠT ĐỘNG", "4", "Được áp dụng trực tiếp tại POS"),
+                Theme.card("HÌNH THỨC GIẢM", "% hoặc Tiền mặt", "Có trần giảm tối đa"),
+                Theme.card("ĐIỀU KIỆN ÁP DỤNG", "Đơn tối thiểu", "Tự động kiểm tra tại POS"));
         statistics.setPreferredSize(new Dimension(700, 120));
         body.add(statistics, BorderLayout.NORTH);
 
         JPanel list = new JPanel(new BorderLayout(0, 16));
         list.setOpaque(false);
         searchField.putClientProperty("JTextField.placeholderText", "Tìm mã voucher…");
-        searchField.putClientProperty("JTextField.leadingIcon", new Theme.LineIcon("search", 16, Theme.MUTED));
         searchField.putClientProperty("FlatLaf.style", "arc: 12; margin: 9,12,9,12");
-        searchField.getAccessibleContext().setAccessibleName("Tìm mã voucher");
-        statusFilter.getAccessibleContext().setAccessibleName("Lọc trạng thái voucher");
+
         JPanel toolbar = new JPanel(new BorderLayout(12, 0));
         toolbar.setOpaque(false);
         toolbar.add(searchField, BorderLayout.CENTER);
@@ -67,16 +65,51 @@ public final class VoucherView extends JPanel {
 
         JPanel bottom = new JPanel(new BorderLayout(10, 12));
         bottom.setOpaque(false);
-        bottom.add(Theme.row(editButton, toggleButton), BorderLayout.NORTH);
-        JLabel note = Theme.label("Chính sách: 1 mã / đơn; tự động chiết khấu vào tổng tiền thanh toán.", 11, Theme.MUTED);
+        bottom.add(Theme.row(toggleButton), BorderLayout.NORTH);
+        JLabel note = Theme.label("Chính sách: Áp dụng 1 mã cho mỗi hóa đơn; kiểm tra điều kiện đơn tối thiểu và hạn dùng tự động.", 11, Theme.MUTED);
         bottom.add(note, BorderLayout.SOUTH);
         list.add(bottom, BorderLayout.SOUTH);
         body.add(list, BorderLayout.CENTER);
         page.add(body);
         add(page);
-        voucherTable.getColumnModel().getColumn(0).setPreferredWidth(140);
-        voucherTable.getColumnModel().getColumn(5).setPreferredWidth(150);
-        voucherTable.getColumnModel().getColumn(6).setPreferredWidth(145);
+
+        // Nạp dữ liệu từ DataStore
+        Runnable loadVouchers = () -> {
+            voucherModel.setRowCount(0);
+            String q = searchField.getText().trim().toLowerCase();
+            String st = (String) statusFilter.getSelectedItem();
+
+            for (Voucher v : DataStore.getDsVoucher()) {
+                if (!q.isEmpty() && !v.getMaVoucher().toLowerCase().contains(q)) continue;
+                if ("Đang sử dụng".equals(st) && !v.isTrangThai()) continue;
+                if ("Không sử dụng".equals(st) && v.isTrangThai()) continue;
+
+                String hinhThucStr = "PHAN_TRAM".equalsIgnoreCase(v.getHinhThucGiam()) ? "Phần trăm (%)" : "Số tiền cố định";
+                String giaTriStr = "PHAN_TRAM".equalsIgnoreCase(v.getHinhThucGiam())
+                        ? String.format("%.0f%%", v.getGiaTriGiam())
+                        : String.format("%,.0f đ", v.getGiaTriGiam());
+                String tranStr = v.getGiamToiDa() > 0 ? String.format("%,.0f đ", v.getGiamToiDa()) : "—";
+                String limitStr = v.getGioiHanLuot() > 0 ? (v.getSoLuotDung() + " / " + v.getGioiHanLuot()) : (v.getSoLuotDung() + " / ∞");
+
+                voucherModel.addRow(new Object[]{
+                        v.getMaVoucher(),
+                        hinhThucStr,
+                        giaTriStr,
+                        String.format("%,.0f đ", v.getDonToiThieu()),
+                        tranStr,
+                        limitStr,
+                        v.isTrangThai() ? "Đang sử dụng" : "Không sử dụng"
+                });
+            }
+        };
+
+        DataStore.addDataChangeListener(loadVouchers);
+        loadVouchers.run();
+
+        searchField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override public void keyReleased(java.awt.event.KeyEvent e) { loadVouchers.run(); }
+        });
+        statusFilter.addActionListener(e -> loadVouchers.run());
 
         // Click trực tiếp vào cột Trạng thái để bật/tắt sử dụng
         voucherTable.addMouseListener(new MouseAdapter() {
@@ -103,16 +136,12 @@ public final class VoucherView extends JPanel {
     }
 
     private void toggleVoucherStatus(int row) {
-        String current = (String) voucherModel.getValueAt(row, 6);
-        String next = "Đang sử dụng".equals(current) ? "Không sử dụng" : "Đang sử dụng";
-        voucherModel.setValueAt(next, row, 6);
-        voucherTable.repaint();
-        new Thread(() -> {
-            try {
-                String ma = (String) voucherModel.getValueAt(row, 0);
-                new com.homucafe.dao.Voucher_DAO().capNhatTrangThai(ma, "Đang sử dụng".equals(next));
-            } catch (Throwable ignored) { }
-        }).start();
+        String ma = (String) voucherModel.getValueAt(row, 0);
+        Voucher v = DataStore.timVoucherTheoMa(ma);
+        if (v != null) {
+            boolean next = !v.isTrangThai();
+            DataStore.capNhatTrangThaiVoucher(ma, next);
+        }
     }
 
     private void showEditor() {
@@ -120,44 +149,82 @@ public final class VoucherView extends JPanel {
         JDialog dialog = new JDialog(owner, "Tạo mã giảm giá mới", Dialog.ModalityType.APPLICATION_MODAL);
         JPanel content = new JPanel(new BorderLayout(0, 20));
         content.setBorder(new EmptyBorder(24, 26, 24, 26));
-        content.add(Theme.stack(7, Theme.title("Tạo một ưu đãi mới"),
-                Theme.label("Nhập thông tin mã giảm giá để áp dụng vào hệ thống POS", 12, Theme.MUTED)), BorderLayout.NORTH);
+        content.setBackground(Theme.WHITE);
+
+        content.add(Theme.stack(5, Theme.title("Tạo mã voucher ưu đãi mới"),
+                Theme.label("Nhập thông tin mã giảm giá để áp dụng ngay vào màn hình Bán hàng (POS)", 12, Theme.MUTED)), BorderLayout.NORTH);
+
         JPanel fields = new JPanel(new GridLayout(0, 2, 16, 14));
-        JTextField code = input("Ví dụ: HOMU10");
-        JComboBox<String> type = new JComboBox<>(new String[]{"Giảm theo phần trăm", "Giảm số tiền cố định"});
-        JTextField val = input("Ví dụ: 10");
-        fields.add(field("Mã giảm giá", code));
+        fields.setOpaque(false);
+
+        JTextField code = input("Ví dụ: HOMU50");
+        JComboBox<String> type = new JComboBox<>(new String[]{"Giảm theo phần trăm (%)", "Giảm số tiền cố định (VND)"});
+        JTextField val = input("10 (cho %) hoặc 20000 (cho VND)");
+        JTextField cap = input("50000 (Trần giảm tối đa)");
+        JTextField minOrder = input("50000 (Đơn tối thiểu)");
+        JTextField limit = input("100 (Tổng số lượt)");
+
+        fields.add(field("Mã giảm giá (*)", code));
         fields.add(field("Hình thức giảm", type));
-        fields.add(field("Giá trị giảm (% hoặc VND)", val));
-        JTextField cap = input("Ví dụ: 30000");
-        fields.add(field("Giảm tối đa (VND, với mã %)", cap));
-        JTextField minOrder = input("Ví dụ: 100000");
+        fields.add(field("Giá trị giảm (*)", val));
+        fields.add(field("Giảm tối đa (VND, với %)", cap));
         fields.add(field("Giá trị đơn tối thiểu (VND)", minOrder));
-        JTextField limit = input("Ví dụ: 100");
         fields.add(field("Tổng số lượt được dùng", limit));
-        fields.add(field("Bắt đầu (ngày/tháng/năm giờ:phút)", input("01/11/2026 00:00")));
-        fields.add(field("Kết thúc (ngày/tháng/năm giờ:phút)", input("30/11/2026 23:59")));
-        content.add(fields);
+
+        content.add(fields, BorderLayout.CENTER);
+
         type.addActionListener(event -> cap.setEnabled(type.getSelectedIndex() == 0));
+
         JButton cancel = Theme.button("Đóng", false);
         cancel.addActionListener(event -> dialog.dispose());
-        JButton save = Theme.button("Lưu mã", true);
+
+        JButton save = Theme.button("✓ Lưu mã ưu đãi", true);
         save.addActionListener(event -> {
-            String c = code.getText().trim();
-            if (!c.isEmpty()) {
-                String giamStr = type.getSelectedIndex() == 0 ? "Giảm " + val.getText().trim() + "%" : "Giảm " + val.getText().trim() + " đ";
-                voucherModel.addRow(new Object[]{
-                        c, giamStr, minOrder.getText().trim() + " đ", cap.getText().trim() + " đ",
-                        "0 / " + limit.getText().trim(), "01–30/11/2026", "Đang sử dụng"
-                });
-                JOptionPane.showMessageDialog(dialog, "Đã lưu mã giảm giá " + c + " thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-                dialog.dispose();
+            String c = code.getText().trim().toUpperCase();
+            if (c.isEmpty()) {
+                JOptionPane.showMessageDialog(dialog, "Vui lòng nhập mã giảm giá!", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+                return;
             }
+            if (DataStore.timVoucherTheoMa(c) != null) {
+                JOptionPane.showMessageDialog(dialog, "Mã voucher " + c + " đã tồn tại!", "Trùng mã", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            double giaTri = 10;
+            double giamMax = 0;
+            double donMin = 0;
+            int tongLuot = 100;
+
+            try {
+                giaTri = Double.parseDouble(val.getText().replaceAll("[^0-9]", ""));
+            } catch (Exception ignored) { }
+            try {
+                giamMax = Double.parseDouble(cap.getText().replaceAll("[^0-9]", ""));
+            } catch (Exception ignored) { }
+            try {
+                donMin = Double.parseDouble(minOrder.getText().replaceAll("[^0-9]", ""));
+            } catch (Exception ignored) { }
+            try {
+                tongLuot = Integer.parseInt(limit.getText().replaceAll("[^0-9]", ""));
+            } catch (Exception ignored) { }
+
+            String hinhThuc = type.getSelectedIndex() == 0 ? "PHAN_TRAM" : "TIEN_MAT";
+            LocalDate start = LocalDate.now();
+            LocalDate end = start.plusMonths(2);
+
+            Voucher newVoucher = new Voucher(c, hinhThuc, giaTri, giamMax, donMin, 0, tongLuot, start, end, true);
+            DataStore.saveVoucher(newVoucher);
+
+            JOptionPane.showMessageDialog(dialog, "Đã lưu mã giảm giá " + c + " thành công!\nMã đã sẵn sàng áp dụng ngay tại quầy POS.", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            dialog.dispose();
         });
+
         JPanel footer = new JPanel(new BorderLayout());
+        footer.setOpaque(false);
         footer.add(Theme.label("Áp dụng trực tiếp tại quầy thanh toán POS.", 11, Theme.MUTED));
         footer.add(Theme.row(cancel, save), BorderLayout.EAST);
         content.add(footer, BorderLayout.SOUTH);
+
         dialog.setContentPane(content);
         dialog.pack();
         dialog.setLocationRelativeTo(owner);
@@ -165,9 +232,11 @@ public final class VoucherView extends JPanel {
     }
 
     private static JPanel field(String label, JComponent input) {
-        JPanel panel = new JPanel(new BorderLayout(0, 6));
+        JPanel panel = new JPanel(new BorderLayout(0, 5));
         panel.setOpaque(false);
-        panel.add(Theme.label(label, 12, Theme.INK), BorderLayout.NORTH);
+        JLabel lbl = Theme.label(label, 12, Theme.INK);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        panel.add(lbl, BorderLayout.NORTH);
         panel.add(input, BorderLayout.CENTER);
         return panel;
     }
@@ -175,7 +244,7 @@ public final class VoucherView extends JPanel {
     private static JTextField input(String placeholder) {
         JTextField field = new JTextField();
         field.putClientProperty("JTextField.placeholderText", placeholder);
-        field.putClientProperty("FlatLaf.style", "arc: 12; margin: 9,12,9,12");
+        field.putClientProperty("FlatLaf.style", "arc: 10; margin: 8,10,8,10");
         return field;
     }
 }

@@ -1,70 +1,13 @@
-# Thiết lập GitHub
+# Thiết lập GitHub & Quy trình Dự án
 
-## Mã nguồn và sản phẩm phát hành
+## 1. Cấu hình Repository
+- Kho chứa: `HomuCafe`
+- Ngôn ngữ & Nền tảng: Java 17+, Maven Wrapper, FlatLaf 3.4.1, MSSQL JDBC 12.6.1.
+- Quy chuẩn nhánh:
+  - `main`: Nhánh ổn định nộp bài.
+  - `feature/pos-swing-iuh`: Nhánh phát triển hoàn thiện đồ án môn học IUH.
 
-Repo HomuCafe được kiểm tra ở chế độ **private** khi khởi tạo. Giữ repo private để nhóm làm việc; phát hành bản cài đặt cho người dùng là một quyết định riêng, không đòi hỏi chuyển repo sang public. Khi cần phân phối công khai, chọn kênh tải riêng phù hợp và không đưa bí mật vào bản cài đặt.
-
-Rule kỹ thuật, hướng dẫn đóng góp và task chức năng thông thường có thể công khai nếu nhóm chọn mở mã nguồn sau này. Thông tin cá nhân, đánh giá thành viên, dữ liệu khách hàng, mật khẩu và trao đổi nhạy cảm cần giữ ngoài nội dung công khai. Kiểm tra cả lịch sử commit, Issues và PR trước khi thay đổi visibility.
-
-## Repo giữ gì, task giữ ở đâu?
-
-- Trong Git: mã nguồn, README, quy định, thiết kế được thống nhất, mẫu Issue/PR và CI.
-- Trong GitHub Issues: task đang làm, người phụ trách, hạn dự kiến, tiêu chí nghiệm thu và trao đổi cụ thể.
-- Trong GitHub Project: bảng theo dõi Issues/PR. Không tạo task độc lập chỉ trong chat.
-<<<<<<< HEAD
-- `docs/backlog.md` chỉ là danh sách khởi động; khi tạo Issue, dùng Issue làm nguồn theo dõi trạng thái, tránh cập nhật trùng ở nhiều nơi.
-=======
-- `docs/backlog.md` giữ liên kết và thứ tự công việc; khi tạo Issue, dùng Issue làm nguồn theo dõi trạng thái, tránh cập nhật trùng ở nhiều nơi.
->>>>>>> origin/main
-
-## Checklist cho người quản lý repo
-
-### Kết quả thiết lập ngày 14/10/2026
-
-- Đã push khung ứng dụng, quy định, mẫu Issue/PR và workflow build lên `main`; giữ repo private.
-- Đã tạo bốn [Issues chuẩn bị](https://github.com/AnkjoD/HomuCafe/issues), chưa gán thành viên/deadline.
-- [Build đầu tiên trên GitHub Actions](https://github.com/AnkjoD/HomuCafe/actions/runs/38525119893) đã thành công.
-- Chưa bật được bảo vệ nhánh: GitHub API trả HTTP 403 và yêu cầu nâng cấp GitHub Pro hoặc đổi repo sang public. Giữ private theo định hướng hiện tại; nhóm cần tuân thủ PR/review thủ công cho tới khi có gói hỗ trợ. Không có cơ chế kỹ thuật chặn push trực tiếp trong cấu hình hiện tại.
-<<<<<<< HEAD
-- Chưa mời cộng tác viên vì chưa có username; chưa tạo bảng Project. Có thể giao việc trước bằng Assignee và trạng thái Issue.
-=======
-- Ở lần kiểm tra tiếp theo, đã có hai lời mời cộng tác viên quyền write gửi tới `maiduyphuonh` và `anhtu437`, đang chờ chấp nhận tại thời điểm kiểm tra. Chưa tạo bảng Project. Có thể giao việc trước bằng Assignee và trạng thái Issue.
-
-### Quy trình đã chọn: private và review thủ công
-
-Nhóm chọn giữ gói hiện tại, không nâng cấp trả phí. Thành viên mở PR cho `AnkjoD` duyệt; chỉ trưởng nhóm hoặc người được chỉ định rõ trong PR thực hiện merge. PR của trưởng nhóm cần thành viên khác duyệt. Chi tiết có trong [CONTRIBUTING.md](../CONTRIBUTING.md).
-
-Các mục checklist bảo vệ nhánh và bắt buộc checks dưới đây chỉ áp dụng khi gói hỗ trợ trong tương lai; không phải việc cần nâng cấp để hoàn tất setup hiện tại. Trong lúc chưa có bảo vệ, kiểm tra review và kết quả build thủ công trước mỗi lần merge.
->>>>>>> origin/main
-
-Các mục dưới đây là hướng dẫn. Chỉ đánh dấu sau khi đã áp dụng và kiểm tra trên GitHub.
-
-- [ ] Settings → Collaborators: thêm từng thành viên bằng tài khoản cá nhân, quyền đủ làm việc; hạn chế số người có quyền quản trị.
-- [ ] Tạo Project dạng Board: Todo / Doing / Review / Done; liên kết Issues của repo.
-- [ ] Tạo labels khi cần: `feature`, `bug`, `documentation`, `blocked`, `needs-decision`.
-- [ ] Settings → Branches hoặc Rulesets: bảo vệ `main`, yêu cầu PR và một người khác approve, giải quyết trao đổi trước khi merge; chặn force push/xóa nhánh.
-- [ ] Sau khi CI chạy lần đầu, yêu cầu hai checks `Build (ubuntu-latest)` và `Build (windows-latest)` trước khi merge. Đối chiếu tên hiển thị thực tế.
-- [ ] Áp dụng quy tắc cho người quản trị nếu gói/cấu hình hỗ trợ; hạn chế quyền bỏ qua.
-- [ ] Settings → General → Pull Requests: dùng Squash merge và tự xóa nhánh sau merge nếu nhóm thống nhất.
-- [ ] Thống nhất thời hạn review và lịch demo; ghi người điều phối trong Issue hoặc tài liệu nhóm.
-- [ ] Chọn giấy phép và chính sách dữ liệu trước khi phát hành bên ngoài.
-
-Nếu gói GitHub không hỗ trợ bảo vệ nhánh cho loại repo đang dùng, ghi rõ giới hạn và duy trì review thủ công; không coi việc có file quy định là đã bật bảo vệ kỹ thuật.
-
-## Tạo và xử lý task
-
-Issues → New issue → chọn mẫu Task hoặc Bug. Điền đủ nội dung, gán một người phụ trách chính và thêm vào Project. Tạo nhánh từ `main`; PR ghi `Closes #<số issue>` khi hoàn thành toàn bộ task. Nếu chỉ đóng góp một phần, dùng `Refs #<số issue>`.
-
-Mỗi PR cần có người review và kết quả kiểm tra; Issues không tự kiểm chứng việc phần mềm chạy đúng.
-
-Tham khảo: [bảo vệ nhánh](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches), [review PR](https://docs.github.com/en/pull-requests/reference/pull-request-reviews).
-<<<<<<< HEAD
-=======
-
-
-## Cập nhật tài liệu ngày 21 tháng 10 năm 2026
-
-Đã chuẩn bị bộ 53 use case, luật nghiệp vụ, kế hoạch, quy trình Ready/Done và hướng mở rộng trong PR #6. Issues #1–#4 được cập nhật theo baseline; #7 theo dõi hợp đồng Service, #8 là Issue điều phối lát cắt và #9 là kế hoạch nghiệm thu/số đo. Chưa tự gán thành viên hoặc deadline. PR #6 vẫn cần review theo quy trình nhóm; có tài liệu trên nhánh PR không đồng nghĩa đã được merge vào main.
-
-Repo được kiểm tra vẫn private ngày 21/10/2026. Quy trình merge thủ công giữ nguyên; không chuyển visibility, đổi gói hoặc tự coi file luật là bảo vệ kỹ thuật. Bắt đầu đọc tại [trang tài liệu nhóm](README.md).
->>>>>>> origin/main
+## 2. Quy trình làm việc nhóm
+- Tạo nhánh từ `feature/pos-swing-iuh` theo cú pháp: `feature/<ma-task>`, `fix/<ten-loi>`.
+- Mở Pull Request (PR) để review trước khi merge.
+- Đảm bảo mã nguồn biên dịch sạch không có warning hoặc conflict markers trước khi tạo PR.

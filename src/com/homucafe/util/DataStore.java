@@ -4,6 +4,7 @@ import com.homucafe.entity.*;
 
 import java.awt.*;
 import java.text.Normalizer;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -13,11 +14,11 @@ import java.util.regex.Pattern;
 /**
  * Kho dữ liệu trung tâm In-Memory DataStore (Thương hiệu HomuCafe).
  * Quản lý đồng bộ dữ liệu thời gian thực giữa quầy POS, Bar Monitor, Quản lý Hóa đơn,
- * Thực đơn, Nhân sự, Sơ đồ bàn, Voucher và Báo cáo đối soát ca.
+ * Thực đơn, Nhân sự, Sơ đồ bàn, Voucher, Đặt bàn trước và Báo cáo đối soát ca.
  */
 public class DataStore {
     public static final int TONG_SO_THE_RUNG = 20; // Khay sạc gồm 20 thẻ rung (01..20)
-    public static final int TONG_SO_BAN = 12;      // Sơ đồ gồm 12 bàn tầng trệt
+    public static final int TONG_SO_BAN = 12;      // Sơ đồ gồm 12 bàn
 
     private static final List<LoaiMon> dsLoaiMon = new ArrayList<>();
     private static final List<Mon> dsMon = new ArrayList<>();
@@ -25,6 +26,9 @@ public class DataStore {
     private static final List<TaiKhoan> dsTaiKhoan = new ArrayList<>();
     private static final List<KhachHang> dsKhachHang = new ArrayList<>();
     private static final List<HoaDon> dsHoaDon = new ArrayList<>();
+    private static final List<Voucher> dsVoucher = new ArrayList<>();
+    private static final List<Ban> dsBan = new ArrayList<>();
+    private static final List<PhieuDatBan> dsPhieuDatBan = new ArrayList<>();
     private static final Map<Integer, String> trangThaiBan = new LinkedHashMap<>();
     private static final List<Runnable> listeners = new ArrayList<>();
 
@@ -55,6 +59,13 @@ public class DataStore {
                     dsNhanVien.addAll(dbNV);
                 }
 
+                com.homucafe.dao.TaiKhoan_DAO tkDAO = new com.homucafe.dao.TaiKhoan_DAO();
+                List<TaiKhoan> dbTK = tkDAO.getAllTaiKhoan();
+                if (!dbTK.isEmpty()) {
+                    dsTaiKhoan.clear();
+                    dsTaiKhoan.addAll(dbTK);
+                }
+
                 com.homucafe.dao.KhachHang_DAO khDAO = new com.homucafe.dao.KhachHang_DAO();
                 List<KhachHang> dbKH = khDAO.getAllKhachHang();
                 if (!dbKH.isEmpty()) {
@@ -66,6 +77,27 @@ public class DataStore {
                 Map<Integer, String> dbBan = banDAO.getAllTrangThaiBan();
                 if (!dbBan.isEmpty()) {
                     trangThaiBan.putAll(dbBan);
+                    for (Map.Entry<Integer, String> entry : dbBan.entrySet()) {
+                        for (Ban b : dsBan) {
+                            if (b.getSoBan() == entry.getKey()) {
+                                b.setTrangThai(entry.getValue());
+                            }
+                        }
+                    }
+                }
+
+                com.homucafe.dao.Voucher_DAO vDAO = new com.homucafe.dao.Voucher_DAO();
+                List<Voucher> dbV = vDAO.getAllVoucher();
+                if (!dbV.isEmpty()) {
+                    dsVoucher.clear();
+                    dsVoucher.addAll(dbV);
+                }
+
+                com.homucafe.dao.PhieuDatBan_DAO pdbDAO = new com.homucafe.dao.PhieuDatBan_DAO();
+                List<PhieuDatBan> dbPDB = pdbDAO.getAllPhieuDatBan();
+                if (!dbPDB.isEmpty()) {
+                    dsPhieuDatBan.clear();
+                    dsPhieuDatBan.addAll(dbPDB);
                 }
 
                 com.homucafe.dao.HoaDon_DAO hdDAO = new com.homucafe.dao.HoaDon_DAO();
@@ -83,14 +115,19 @@ public class DataStore {
 
     private static void initSampleData() {
         // 1. Khởi tạo 12 bàn
+        dsBan.clear();
+        trangThaiBan.clear();
         for (int i = 1; i <= TONG_SO_BAN; i++) {
-            trangThaiBan.put(i, "TRONG");
+            int soCho = (i == 4 || i == 12) ? 6 : (i % 2 == 0 ? 2 : 4);
+            String ma = String.format("B%02d", i);
+            String ten = String.format("Bàn %02d", i);
+            String tt = "TRONG";
+            if (i == 1 || i == 3 || i == 5 || i == 8 || i == 10) tt = "DANG_PHUC_VU";
+            else if (i == 4 || i == 12) tt = "DA_DAT";
+
+            dsBan.add(new Ban(ma, ten, soCho, tt));
+            trangThaiBan.put(i, tt);
         }
-        trangThaiBan.put(1, "DANG_PHUC_VU");
-        trangThaiBan.put(3, "DANG_PHUC_VU");
-        trangThaiBan.put(5, "DANG_PHUC_VU");
-        trangThaiBan.put(8, "DANG_PHUC_VU");
-        trangThaiBan.put(10, "DANG_PHUC_VU");
 
         // 2. Danh mục Loại món
         LoaiMon lmCaPhe = new LoaiMon("LM01", "Cà phê");
@@ -113,14 +150,17 @@ public class DataStore {
         dsMon.add(new Mon("MILK02", "Trà Sữa Ô Long Nướng", 45000, "3", true, lmTraSua));
         dsMon.add(new Mon("ICE01", "Homu Matcha Latte", 45000, "3", true, lmDaXay));
         dsMon.add(new Mon("ICE02", "Cacao Nóng / Đá", 40000, "4", true, lmDaXay));
+        dsMon.add(new Mon("CAKE01", "Bánh Tiramisu Homu", 39000, "4", true, lmBanhNgot));
+        dsMon.add(new Mon("CAKE02", "Croissant Trứng Muối", 35000, "4", true, lmBanhNgot));
 
         // 4. Nhân viên & Tài khoản
-        NhanVien nv1 = new NhanVien("NV01", "Minh Anh", "0901234567", "079204001234", "Thu ngân", true);
-        NhanVien nv2 = new NhanVien("NV02", "Gia Huy", "0912345678", "079204005678", "Pha chế", true);
-        NhanVien nv3 = new NhanVien("NV03", "Hoàng Nam", "0987654321", "079204009012", "Quản lý", true);
-        dsNhanVien.addAll(Arrays.asList(nv1, nv2, nv3));
+        NhanVien nv1 = new NhanVien("NV01", "Trần Văn An", "0901234567", "079204001234", "Thu ngân", true);
+        NhanVien nv2 = new NhanVien("NV02", "Lê Thị Hoa", "0912345678", "079204005678", "Pha chế", true);
+        NhanVien nv3 = new NhanVien("NV03", "Phạm Minh Vũ", "0987654321", "079204009012", "Thu ngân", true);
+        NhanVien nv4 = new NhanVien("NV04", "Nguyễn Bảo Trọng", "0938112233", "079204003456", "Quản lý", true);
+        dsNhanVien.addAll(Arrays.asList(nv1, nv2, nv3, nv4));
 
-        TaiKhoan tkAdmin = new TaiKhoan("admin", "123456", "ADMIN", nv3);
+        TaiKhoan tkAdmin = new TaiKhoan("admin", "123456", "ADMIN", nv4);
         TaiKhoan tkThuNgan = new TaiKhoan("thungan01", "123456", "STAFF", nv1);
         TaiKhoan tkBar = new TaiKhoan("bar01", "123456", "STAFF", nv2);
         dsTaiKhoan.addAll(Arrays.asList(tkAdmin, tkThuNgan, tkBar));
@@ -128,12 +168,33 @@ public class DataStore {
         taiKhoanDangNhap = tkAdmin;
 
         // 5. Khách hàng thành viên
-        KhachHang kh1 = new KhachHang("KH0001", "Nguyễn Thu Hà", "0908123456", 35);
-        KhachHang kh2 = new KhachHang("KH0002", "Trần Minh Tuấn", "0918654321", 50);
-        KhachHang kh3 = new KhachHang("KH0003", "Lê Bảo Ngọc", "0977888999", 15);
+        KhachHang kh1 = new KhachHang("KH0001", "Nguyễn Hoàng Nam", "0987654321", 35);
+        KhachHang kh2 = new KhachHang("KH0002", "Trần Ngọc Ánh", "0909123456", 50);
+        KhachHang kh3 = new KhachHang("KH0003", "Lê Minh Khôi", "0918889999", 15);
         dsKhachHang.addAll(Arrays.asList(kh1, kh2, kh3));
 
-        // 6. Đơn hàng mẫu ban đầu trên Bar Monitor & Quản lý hóa đơn
+        // 6. Danh mục Voucher
+        LocalDate today = LocalDate.now();
+        dsVoucher.add(new Voucher("HOMU10", "PHAN_TRAM", 10, 30000, 50000, 5, 100, today.minusDays(5), today.plusMonths(2), true));
+        dsVoucher.add(new Voucher("HOMU20", "TIEN_MAT", 20000, 20000, 100000, 2, 50, today.minusDays(5), today.plusMonths(2), true));
+        dsVoucher.add(new Voucher("HOMUWELCOME", "PHAN_TRAM", 15, 50000, 0, 12, 200, today.minusDays(5), today.plusMonths(2), true));
+        dsVoucher.add(new Voucher("CHIEUVUI", "TIEN_MAT", 15000, 15000, 80000, 30, 200, today.minusDays(5), today.plusMonths(2), true));
+
+        // 7. Phiếu đặt bàn mẫu
+        Ban ban04 = timBanTheoSo(4);
+        Ban ban12 = timBanTheoSo(12);
+
+        PhieuDatBan pdb1 = new PhieuDatBan("PDB001", LocalDateTime.now().minusHours(2),
+                LocalDateTime.now().plusHours(1), 6, 100000, "Họp mặt sinh nhật, cần chỗ yên tĩnh", "DA_DAT", kh1, nv1);
+        if (ban04 != null) pdb1.themChiTiet(new ChiTietPhieuDatBan("PDB001", ban04, "Bàn 6 chỗ"));
+        dsPhieuDatBan.add(pdb1);
+
+        PhieuDatBan pdb2 = new PhieuDatBan("PDB002", LocalDateTime.now().minusHours(1),
+                LocalDateTime.now().plusHours(2), 6, 100000, "Đặt bàn tiệc gia đình", "DA_DAT", kh2, nv1);
+        if (ban12 != null) pdb2.themChiTiet(new ChiTietPhieuDatBan("PDB002", ban12, "Bàn 6 chỗ view cửa sổ"));
+        dsPhieuDatBan.add(pdb2);
+
+        // 8. Đơn hàng mẫu ban đầu trên Bar Monitor & Quản lý hóa đơn
         Mon cfSua = timMonTheoMa("CF002");
         Mon traDao = timMonTheoMa("TEA01");
         Mon latte = timMonTheoMa("CF004");
@@ -148,7 +209,8 @@ public class DataStore {
 
         // Đơn 2: Đang thực hiện pha chế (Thẻ rung 02 - Mang đi)
         HoaDon hd2 = new HoaDon("HD261021_0002", LocalDateTime.now().minusMinutes(7), nv1, kh2,
-                "Mang đi", 2, "MANG_DI", "VIETQR", "DANG_PHA_CHE", 90000, 10000, 90000, 0, null);
+                "Mang đi", 2, "MANG_DI", "VIETQR", "DANG_PHA_CHE", 90000, 10000, 90000, 0, "HOMU10");
+        hd2.setMaVoucher("HOMU10");
         hd2.themChiTiet(new ChiTietHoaDon(3, latte, KichCo.L, 1, 57000, 50, "KHONG_DA", ""));
         hd2.themChiTiet(new ChiTietHoaDon(4, bacXiu, KichCo.S, 1, 39000, 100, "BINH_THUONG", ""));
         dsHoaDon.add(hd2);
@@ -185,14 +247,87 @@ public class DataStore {
     public static List<TaiKhoan> getDsTaiKhoan() { return dsTaiKhoan; }
     public static List<KhachHang> getDsKhachHang() { return dsKhachHang; }
     public static List<HoaDon> getDsHoaDon() { return dsHoaDon; }
+    public static List<Voucher> getDsVoucher() { return dsVoucher; }
+    public static List<Ban> getDsBan() { return dsBan; }
+    public static List<PhieuDatBan> getDsPhieuDatBan() { return dsPhieuDatBan; }
     public static Map<Integer, String> getTrangThaiBan() { return trangThaiBan; }
 
     public static TaiKhoan getTaiKhoanDangNhap() { return taiKhoanDangNhap; }
-    public static void setTaiKhoanDangNhap(TaiKhoan tk) { taiKhoanDangNhap = tk; }
+    public static void setTaiKhoanDangNhap(TaiKhoan tk) {
+        taiKhoanDangNhap = tk;
+        notifyDataChanged();
+    }
+
+    public static TaiKhoan dangNhap(String tenDangNhap, String matKhau) {
+        if (tenDangNhap == null || matKhau == null) return null;
+        for (TaiKhoan tk : dsTaiKhoan) {
+            if (tk.getTenDangNhap().equalsIgnoreCase(tenDangNhap.trim()) && tk.getMatKhau().equals(matKhau.trim())) {
+                setTaiKhoanDangNhap(tk);
+                return tk;
+            }
+        }
+        return null;
+    }
+
+    public static boolean doiMatKhau(String tenDangNhap, String matKhauCu, String matKhauMoi) {
+        for (TaiKhoan tk : dsTaiKhoan) {
+            if (tk.getTenDangNhap().equalsIgnoreCase(tenDangNhap) && tk.getMatKhau().equals(matKhauCu)) {
+                tk.setMatKhau(matKhauMoi);
+                new Thread(() -> {
+                    try {
+                        new com.homucafe.dao.TaiKhoan_DAO().doiMatKhau(tenDangNhap, matKhauMoi);
+                    } catch (Throwable ignored) { }
+                }).start();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static Ban timBanTheoSo(int soBan) {
+        for (Ban b : dsBan) {
+            if (b.getSoBan() == soBan) return b;
+        }
+        return null;
+    }
+
+    public static PhieuDatBan timPhieuDatBanTheoSoBan(int soBan) {
+        String maBan = String.format("B%02d", soBan);
+        for (PhieuDatBan p : dsPhieuDatBan) {
+            if ("DA_DAT".equalsIgnoreCase(p.getTrangThai())) {
+                for (ChiTietPhieuDatBan ct : p.getDsChiTiet()) {
+                    if (ct.getBan() != null && maBan.equalsIgnoreCase(ct.getBan().getMaBan())) {
+                        return p;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    public static HoaDon timHoaDonDangNgoi(int soBan) {
+        String banStr = String.format("Bàn %02d", soBan);
+        for (HoaDon hd : dsHoaDon) {
+            if (banStr.equalsIgnoreCase(hd.getBanPhucVu()) || (hd.getSoBan() == soBan)) {
+                if ("DANG_PHA_CHE".equals(hd.getTrangThaiDon()) || "CHO_GIAO".equals(hd.getTrangThaiDon())) {
+                    return hd;
+                }
+            }
+        }
+        return null;
+    }
 
     public static Mon timMonTheoMa(String maMon) {
         for (Mon m : dsMon) {
             if (m.getMaMon().equalsIgnoreCase(maMon)) return m;
+        }
+        return null;
+    }
+
+    public static Voucher timVoucherTheoMa(String maVoucher) {
+        if (maVoucher == null) return null;
+        for (Voucher v : dsVoucher) {
+            if (v.getMaVoucher().equalsIgnoreCase(maVoucher.trim())) return v;
         }
         return null;
     }
@@ -265,9 +400,13 @@ public class DataStore {
     }
 
     // ==========================================
-    // CÁC HÀM ĐỒNG BỘ DỮ LIỆU XUỐNG SQL SERVER
+    // CÁC HÀM NGHIỆP VỤ & ĐỒNG BỘ CSDL
     // ==========================================
     public static void saveHoaDon(HoaDon hd) {
+        if (!dsHoaDon.contains(hd)) {
+            dsHoaDon.add(0, hd);
+        }
+        notifyDataChanged();
         new Thread(() -> {
             try {
                 new com.homucafe.dao.HoaDon_DAO().themHoaDon(hd);
@@ -276,6 +415,13 @@ public class DataStore {
     }
 
     public static void saveTrangThaiHoaDon(String maHD, String trangThai) {
+        for (HoaDon hd : dsHoaDon) {
+            if (hd.getMaHoaDon().equalsIgnoreCase(maHD)) {
+                hd.setTrangThaiDon(trangThai);
+                break;
+            }
+        }
+        notifyDataChanged();
         new Thread(() -> {
             try {
                 new com.homucafe.dao.HoaDon_DAO().capNhatTrangThaiDon(maHD, trangThai);
@@ -283,7 +429,47 @@ public class DataStore {
         }).start();
     }
 
+    public static boolean huyHoaDon(String maHD, String lyDoHuy, String maNVXacNhan) {
+        HoaDon target = null;
+        for (HoaDon hd : dsHoaDon) {
+            if (hd.getMaHoaDon().equalsIgnoreCase(maHD)) {
+                target = hd;
+                break;
+            }
+        }
+        if (target == null) return false;
+
+        target.setTrangThaiDon("DA_HUY");
+        target.setGhiChu(lyDoHuy);
+
+        // Hoàn lại lượt voucher nếu có dùng
+        if (target.getMaVoucher() != null) {
+            giamSoLuotVoucher(target.getMaVoucher());
+        }
+
+        // Hoàn lại điểm tích lũy khách hàng nếu có
+        if (target.getKhachHang() != null && target.getGiamGia() > 0) {
+            int diemHoan = (int) (target.getGiamGia() / 1000);
+            target.getKhachHang().setDiemTichLuy(target.getKhachHang().getDiemTichLuy() + diemHoan);
+            saveKhachHang(target.getKhachHang());
+        }
+
+        // Giải phóng bàn nếu có
+        if (target.getSoBan() > 0) {
+            setTrangThaiBan(target.getSoBan(), "TRONG");
+        }
+
+        notifyDataChanged();
+        new Thread(() -> {
+            try {
+                new com.homucafe.dao.HoaDon_DAO().huyHoaDon(maHD, lyDoHuy, maNVXacNhan);
+            } catch (Throwable ignored) { }
+        }).start();
+        return true;
+    }
+
     public static void saveMon(Mon m) {
+        notifyDataChanged();
         new Thread(() -> {
             try {
                 new com.homucafe.dao.Mon_DAO().capNhatMon(m);
@@ -292,6 +478,8 @@ public class DataStore {
     }
 
     public static void themMonVaoDB(Mon m) {
+        if (!dsMon.contains(m)) dsMon.add(m);
+        notifyDataChanged();
         new Thread(() -> {
             try {
                 new com.homucafe.dao.Mon_DAO().themMon(m);
@@ -300,6 +488,7 @@ public class DataStore {
     }
 
     public static void saveNhanVien(NhanVien nv) {
+        notifyDataChanged();
         new Thread(() -> {
             try {
                 new com.homucafe.dao.NhanVien_DAO().capNhatNhanVien(nv);
@@ -308,6 +497,8 @@ public class DataStore {
     }
 
     public static void themNhanVienVaoDB(NhanVien nv) {
+        if (!dsNhanVien.contains(nv)) dsNhanVien.add(nv);
+        notifyDataChanged();
         new Thread(() -> {
             try {
                 new com.homucafe.dao.NhanVien_DAO().themNhanVien(nv);
@@ -316,6 +507,7 @@ public class DataStore {
     }
 
     public static void saveKhachHang(KhachHang kh) {
+        notifyDataChanged();
         new Thread(() -> {
             try {
                 new com.homucafe.dao.KhachHang_DAO().capNhatKhachHang(kh);
@@ -324,11 +516,21 @@ public class DataStore {
     }
 
     public static void themKhachHangVaoDB(KhachHang kh) {
+        if (!dsKhachHang.contains(kh)) dsKhachHang.add(kh);
+        notifyDataChanged();
         new Thread(() -> {
             try {
                 new com.homucafe.dao.KhachHang_DAO().themKhachHang(kh);
             } catch (Throwable ignored) { }
         }).start();
+    }
+
+    public static void setTrangThaiBan(int soBan, String trangThai) {
+        trangThaiBan.put(soBan, trangThai);
+        Ban b = timBanTheoSo(soBan);
+        if (b != null) b.setTrangThai(trangThai);
+        notifyDataChanged();
+        saveTrangThaiBan(soBan, trangThai);
     }
 
     public static void saveTrangThaiBan(int soBan, String trangThai) {
@@ -338,5 +540,88 @@ public class DataStore {
             } catch (Throwable ignored) { }
         }).start();
     }
-}
 
+    public static void saveVoucher(Voucher v) {
+        if (!dsVoucher.contains(v)) {
+            dsVoucher.add(v);
+        }
+        notifyDataChanged();
+        new Thread(() -> {
+            try {
+                new com.homucafe.dao.Voucher_DAO().themVoucher(v);
+            } catch (Throwable ignored) { }
+        }).start();
+    }
+
+    public static void capNhatTrangThaiVoucher(String maVoucher, boolean trangThai) {
+        Voucher v = timVoucherTheoMa(maVoucher);
+        if (v != null) {
+            v.setTrangThai(trangThai);
+            notifyDataChanged();
+        }
+        new Thread(() -> {
+            try {
+                new com.homucafe.dao.Voucher_DAO().capNhatTrangThai(maVoucher, trangThai);
+            } catch (Throwable ignored) { }
+        }).start();
+    }
+
+    public static void tangSoLuotVoucher(String maVoucher) {
+        Voucher v = timVoucherTheoMa(maVoucher);
+        if (v != null) {
+            v.setSoLuotDung(v.getSoLuotDung() + 1);
+            notifyDataChanged();
+        }
+        new Thread(() -> {
+            try {
+                new com.homucafe.dao.Voucher_DAO().tangLuotDung(maVoucher);
+            } catch (Throwable ignored) { }
+        }).start();
+    }
+
+    public static void giamSoLuotVoucher(String maVoucher) {
+        Voucher v = timVoucherTheoMa(maVoucher);
+        if (v != null) {
+            v.setSoLuotDung(Math.max(0, v.getSoLuotDung() - 1));
+            notifyDataChanged();
+        }
+        new Thread(() -> {
+            try {
+                new com.homucafe.dao.Voucher_DAO().giamSoLuot(maVoucher);
+            } catch (Throwable ignored) { }
+        }).start();
+    }
+
+    public static void savePhieuDatBan(PhieuDatBan pdb) {
+        if (!dsPhieuDatBan.contains(pdb)) {
+            dsPhieuDatBan.add(0, pdb);
+        }
+        // Đổi trạng thái bàn tương ứng sang DA_DAT
+        for (ChiTietPhieuDatBan ct : pdb.getDsChiTiet()) {
+            if (ct.getBan() != null) {
+                setTrangThaiBan(ct.getBan().getSoBan(), "DA_DAT");
+            }
+        }
+        notifyDataChanged();
+        new Thread(() -> {
+            try {
+                new com.homucafe.dao.PhieuDatBan_DAO().themPhieuDatBan(pdb);
+            } catch (Throwable ignored) { }
+        }).start();
+    }
+
+    public static void capNhatTrangThaiPhieuDatBan(String maPhieu, String trangThai) {
+        for (PhieuDatBan p : dsPhieuDatBan) {
+            if (p.getMaPhieu().equalsIgnoreCase(maPhieu)) {
+                p.setTrangThai(trangThai);
+                break;
+            }
+        }
+        notifyDataChanged();
+        new Thread(() -> {
+            try {
+                new com.homucafe.dao.PhieuDatBan_DAO().capNhatTrangThai(maPhieu, trangThai);
+            } catch (Throwable ignored) { }
+        }).start();
+    }
+}

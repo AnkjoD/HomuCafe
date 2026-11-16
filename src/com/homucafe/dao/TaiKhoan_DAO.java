@@ -8,11 +8,48 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Lớp truy xuất dữ liệu Bảng Tài khoản người dùng (TAI_KHOAN_DAO) - Chuẩn kiến trúc 3 lớp IUH.
  */
 public class TaiKhoan_DAO {
+
+    public List<TaiKhoan> getAllTaiKhoan() {
+        List<TaiKhoan> ds = new ArrayList<>();
+        Connection con = ConnectDB.getConnection();
+        if (con == null) return ds;
+
+        String sql = "SELECT tk.tenDangNhap, tk.matKhau, tk.phanQuyen, " +
+                     "nv.maNV, nv.hoTen, nv.soDienThoai, nv.cccd, nv.trangThaiLamViec, cv.tenChucVu " +
+                     "FROM TAI_KHOAN tk " +
+                     "INNER JOIN NHAN_VIEN nv ON tk.maNV = nv.maNV " +
+                     "LEFT JOIN CHUC_VU cv ON nv.maChucVu = cv.maChucVu";
+        try (PreparedStatement stmt = con.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                String maNV = rs.getString("maNV");
+                String ten = rs.getString("hoTen");
+                String sdt = rs.getString("soDienThoai");
+                String cccd = rs.getString("cccd");
+                boolean tt = rs.getBoolean("trangThaiLamViec");
+                String chucVu = rs.getString("tenChucVu");
+                if (chucVu == null) chucVu = "Thu ngân";
+
+                NhanVien nv = new NhanVien(maNV, ten, sdt, cccd, chucVu, tt);
+                ds.add(new TaiKhoan(
+                        rs.getString("tenDangNhap"),
+                        rs.getString("matKhau"),
+                        rs.getString("phanQuyen"),
+                        nv
+                ));
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi getAllTaiKhoan: " + e.getMessage());
+        }
+        return ds;
+    }
 
     public TaiKhoan kiemTraDangNhap(String user, String pass) {
         Connection con = ConnectDB.getConnection();
@@ -51,5 +88,19 @@ public class TaiKhoan_DAO {
         }
         return null;
     }
-}
 
+    public boolean doiMatKhau(String tenDangNhap, String matKhauMoi) {
+        Connection con = ConnectDB.getConnection();
+        if (con == null) return false;
+
+        String sql = "UPDATE TAI_KHOAN SET matKhau = ? WHERE tenDangNhap = ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setString(1, matKhauMoi);
+            stmt.setString(2, tenDangNhap);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Lỗi doiMatKhau: " + e.getMessage());
+            return false;
+        }
+    }
+}

@@ -26,9 +26,11 @@ public class HoaDon_DAO {
         Connection con = ConnectDB.getConnection();
         if (con == null) return ds;
 
-        String sql = "SELECT hd.maHD, hd.ngayLap, hd.loaiDon, " +
-                     "hd.giamGia, hd.trangThaiDon, hd.maBan, " +
+        String sql = "SELECT hd.maHD, hd.ngayLap, hd.loaiDon, hd.soTheRung, " +
+                     "hd.giamGia, hd.trangThaiDon, hd.maBan, hd.maVoucher, " +
                      "ISNULL(pt.tenPhuongThuc, N'Tiền mặt') AS phuongThucThanhToan, " +
+                     "ISNULL((SELECT SUM(ct.soLuong * ct.donGiaThucTe) FROM CHI_TIET_HOA_DON ct WHERE ct.maHD = hd.maHD), 0) AS tongTien, " +
+                     "ROW_NUMBER() OVER (PARTITION BY CAST(hd.ngayLap AS DATE) ORDER BY hd.ngayLap) AS soThuTuNgay, " +
                      "nv.maNV, nv.hoTen AS tenNV, nv.soDienThoai AS sdtNV, nv.cccd AS cccdNV, nv.trangThaiLamViec, " +
                      "kh.maKH, kh.hoTen AS tenKH, kh.soDienThoai AS sdtKH, kh.diemTichLuy " +
                      "FROM HOA_DON hd " +
@@ -50,6 +52,7 @@ public class HoaDon_DAO {
                 double tongTien = rs.getDouble("tongTien");
                 String trangThai = rs.getString("trangThaiDon");
                 String maBan = rs.getString("maBan");
+                String maVoucher = rs.getString("maVoucher");
 
                 // NhanVien
                 String maNV = rs.getString("maNV");
@@ -71,8 +74,9 @@ public class HoaDon_DAO {
                 HoaDon hd = new HoaDon(
                         maHD, ngayLap, nv, kh, banPhucVu, soTheRung,
                         loaiDon, phuongThuc, trangThai, tongTien, giamGia,
-                        tongTien, 0, null
+                        tongTien, 0, maVoucher
                 );
+                hd.setMaVoucher(maVoucher);
                 hd.setSoThuTuNgay(stt);
 
                 // Nạp chi tiết các ly nước
@@ -102,25 +106,45 @@ public class HoaDon_DAO {
         }
 
         String maPT = "PT01";
-        if (hd.getPhuongThucThanhToan() != null && hd.getPhuongThucThanhToan().contains("QR")) {
-            maPT = "PT02";
+        if (hd.getPhuongThucThanhToan() != null) {
+            String pt = hd.getPhuongThucThanhToan().toUpperCase();
+            if (pt.contains("QR") || pt.contains("CHUYEN_KHOAN") || pt.contains("VIETQR")) {
+                maPT = "PT02";
+            } else if (pt.contains("VI_DIEN_TU") || pt.contains("MOMO") || pt.contains("ZALOPAY")) {
+                maPT = "PT03";
+            }
         }
 
-        String sql = "INSERT INTO HOA_DON (maHD, ngayLap, loaiDon, giamGia, trangThaiDon, maNV, maKH, maVoucher, maBan, maPhuongThuc) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO HOA_DON (maHD, ngayLap, loaiDon, soTheRung, giamGia, trangThaiDon, maNV, maKH, maVoucher, maBan, maPhuongThuc) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = con.prepareStatement(sql)) {
             stmt.setString(1, hd.getMaHoaDon());
             stmt.setTimestamp(2, Timestamp.valueOf(hd.getNgayLap() != null ? hd.getNgayLap() : LocalDateTime.now()));
             stmt.setString(3, hd.getLoaiDon() != null ? hd.getLoaiDon() : "TAI_QUAN");
-            stmt.setDouble(4, hd.getGiamGia());
-            stmt.setString(5, hd.getTrangThaiDon() != null ? hd.getTrangThaiDon() : "DANG_PHA_CHE");
-            stmt.setString(6, hd.getNhanVien() != null ? hd.getNhanVien().getMaNV() : "NV01");
-            if (hd.getKhachHang() != null) stmt.setString(7, hd.getKhachHang().getMaKH());
-            else stmt.setNull(7, java.sql.Types.NVARCHAR);
-            stmt.setNull(8, java.sql.Types.NVARCHAR); // maVoucher
-            if (maBan != null) stmt.setString(9, maBan);
-            else stmt.setNull(9, java.sql.Types.NVARCHAR);
-            stmt.setString(10, maPT);
+            if (hd.getSoTheRung() > 0) {
+                stmt.setInt(4, hd.getSoTheRung());
+            } else {
+                stmt.setNull(4, java.sql.Types.INTEGER);
+            }
+            stmt.setDouble(5, hd.getGiamGia());
+            stmt.setString(6, hd.getTrangThaiDon() != null ? hd.getTrangThaiDon() : "DANG_PHA_CHE");
+            stmt.setString(7, hd.getNhanVien() != null ? hd.getNhanVien().getMaNV() : "NV01");
+            if (hd.getKhachHang() != null && hd.getKhachHang().getMaKH() != null) {
+                stmt.setString(8, hd.getKhachHang().getMaKH());
+            } else {
+                stmt.setNull(8, java.sql.Types.NVARCHAR);
+            }
+            if (hd.getMaVoucher() != null && !hd.getMaVoucher().trim().isEmpty()) {
+                stmt.setString(9, hd.getMaVoucher().trim());
+            } else {
+                stmt.setNull(9, java.sql.Types.NVARCHAR);
+            }
+            if (maBan != null) {
+                stmt.setString(10, maBan);
+            } else {
+                stmt.setNull(10, java.sql.Types.NVARCHAR);
+            }
+            stmt.setString(11, maPT);
 
             int affected = stmt.executeUpdate();
             if (affected > 0) {
@@ -150,8 +174,21 @@ public class HoaDon_DAO {
         }
     }
 
+    public boolean huyHoaDon(String maHD, String lyDoHuy, String maNVXacNhan) {
+        Connection con = ConnectDB.getConnection();
+        if (con == null) return false;
+
+        String sql = "UPDATE HOA_DON SET trangThaiDon = 'DA_HUY' WHERE maHD = ?";
+        try (PreparedStatement stmt = con.prepareStatement(sql)) {
+            stmt.setString(1, maHD);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Lỗi huyHoaDon: " + e.getMessage());
+            return false;
+        }
+    }
+
     public boolean huyHoaDon(String maHD) {
-        return capNhatTrangThaiDon(maHD, "DA_HUY");
+        return huyHoaDon(maHD, "Hủy đơn hàng", "NV01");
     }
 }
-

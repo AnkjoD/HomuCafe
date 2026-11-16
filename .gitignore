@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Compiled class files
 *.class
 bin/
@@ -32,26 +31,3 @@ out/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
-
-=======
-target/
-out/
-build/
-.idea/
-*.iml
-.vscode/
-.classpath
-.project
-.settings/
-.env
-.env.*
-!.env.example
-application-local.properties
-*.log
-*.db
-*.db-*
-*.sqlite
-*.sqlite3
-.DS_Store
-Thumbs.db
->>>>>>> origin/main
