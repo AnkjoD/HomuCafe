@@ -24,6 +24,11 @@ public class DialogDangNhap extends JDialog {
         initUI();
     }
 
+    public DialogDangNhap(Window parent) {
+        super(parent, "Đăng nhập · HomuCafe Coffee POS", ModalityType.APPLICATION_MODAL);
+        initUI();
+    }
+
     private void initUI() {
         setLayout(new BorderLayout());
         getContentPane().setBackground(Theme.WHITE);

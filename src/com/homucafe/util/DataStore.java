@@ -263,6 +263,41 @@ public class DataStore {
         }
     }
 
+    public static java.time.LocalDate getActiveBusinessDate() {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate latest = null;
+        for (HoaDon hd : dsHoaDon) {
+            if ("DA_HUY".equalsIgnoreCase(hd.getTrangThaiDon()) || hd.getNgayLap() == null) continue;
+            java.time.LocalDate d = hd.getNgayLap().toLocalDate();
+            if (d.isEqual(today)) {
+                return today;
+            }
+            if (latest == null || d.isAfter(latest)) {
+                latest = d;
+            }
+        }
+        return latest != null ? latest : today;
+    }
+
+    public static boolean isTienMat(HoaDon hd) {
+        String pt = hd != null ? hd.getPhuongThucThanhToan() : null;
+        if (pt == null || pt.trim().isEmpty()) return true;
+        String upper = pt.toUpperCase();
+        String lower = pt.toLowerCase();
+        return upper.contains("TIEN_MAT") || lower.contains("tiền mặt");
+    }
+
+    public static double parseCurrency(String text) {
+        if (text == null) return 0;
+        String digits = text.replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) return 0;
+        try {
+            return Double.parseDouble(digits);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public static List<LoaiMon> getDsLoaiMon() { return dsLoaiMon; }
     public static List<Mon> getDsMon() { return dsMon; }
     public static List<NhanVien> getDsNhanVien() { return dsNhanVien; }

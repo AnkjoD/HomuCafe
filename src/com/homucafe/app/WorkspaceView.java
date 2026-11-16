@@ -3,6 +3,7 @@ package com.homucafe.app;
 import com.homucafe.entity.TaiKhoan;
 import com.homucafe.report.ReportView;
 import com.homucafe.shared.ui.Theme;
+import com.homucafe.util.DataStore;
 import com.homucafe.voucher.VoucherView;
 
 import javax.swing.*;
@@ -12,21 +13,35 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Khung làm việc chính: Sidebar thương hiệu HomuCafe, Topbar chuyển đổi vai trò, và CardLayout quản lý màn hình.
+ * Khung làm việc chính: Sidebar thương hiệu HomuCafe, Topbar thông tin ca trực & đổi ca nhanh,
+ * và CardLayout quản lý các màn hình độc lập phân quyền theo VaiTro (QUAN_LY, THU_NGAN, PHA_CHE).
  */
 public final class WorkspaceView extends JPanel {
     private final JPanel sidebar = new JPanel();
     private final CardLayout cards = new CardLayout();
     private final JPanel content = new JPanel(cards);
     private final JLabel breadcrumb = Theme.label("Không gian làm việc", 12, Theme.MUTED);
-    private final JComboBox<PreviewRole> rolePicker = new JComboBox<>(PreviewRole.values());
+    private final JLabel lblCurrentShiftUser = Theme.label("Ca trực: Chưa đăng nhập  ·  Vai trò: Thu ngân", 12, Theme.INK);
+    private final JButton btnDoiCaDangXuat = Theme.button("Đổi ca / Đăng xuất", false);
+
     private final Map<String, JButton> navigation = new LinkedHashMap<>();
 
+    // 8 Màn hình nghiệp vụ độc lập + 2 Module nâng cao
+    private final PanelTongQuan panelTongQuan = new PanelTongQuan();
+    private final PanelBanHangPOS panelBanHang = new PanelBanHangPOS();
+    private final PanelSoDoBan panelSoDoBan = new PanelSoDoBan();
+    private final PanelQuayPhaChe panelQuayPhaChe = new PanelQuayPhaChe();
+    private final PanelQuanLyHoaDon panelQuanLyHoaDon = new PanelQuanLyHoaDon();
+    private final PanelQuanLyThucDon panelQuanLyThucDon = new PanelQuanLyThucDon();
+    private final PanelQuanLyNhanSu panelQuanLyNhanSu = new PanelQuanLyNhanSu();
+    private final PanelQuanLyKhachHang panelQuanLyKhachHang = new PanelQuanLyKhachHang();
     private final VoucherView voucherView = new VoucherView();
     private final ReportView reportView = new ReportView();
+
     private final JLabel lblProfileName = Theme.label("HomuCafe · IUH", 12, Theme.INK);
     private final JLabel lblProfileStatus = Theme.label("● Quán đang mở · 12 bàn", 10, Theme.MUTED);
-    private PreviewRole role = PreviewRole.OWNER;
+    private VaiTro currentVaiTro = VaiTro.QUAN_LY;
+    private String currentScreenName = "Tổng quan";
     private static WorkspaceView currentInstance;
 
     public static WorkspaceView getCurrentInstance() {
@@ -49,25 +64,34 @@ public final class WorkspaceView extends JPanel {
         menuScroll.getVerticalScrollBar().setUnitIncrement(16);
         add(menuScroll, BorderLayout.WEST);
 
-        // Đăng ký toàn bộ các màn hình chức năng vào CardLayout
-        for (String name : PreviewRole.OWNER.screens()) {
-            JComponent screen = switch (name) {
-                case "Voucher & ưu đãi" -> voucherView;
-                case "Báo cáo" -> reportView;
-                default -> SampleScreens.create(name);
-            };
-            content.add(screen, name);
-        }
+        // Đăng ký toàn bộ 10 màn hình vào CardLayout
+        content.add(panelTongQuan, "Tổng quan");
+        content.add(panelBanHang, "Bán hàng");
+        content.add(panelSoDoBan, "Sơ đồ bàn");
+        content.add(panelQuayPhaChe, "Quầy pha chế");
+        content.add(panelQuanLyHoaDon, "Quản lý hóa đơn");
+        content.add(panelQuanLyThucDon, "Thực đơn món");
+        content.add(voucherView, "Voucher & ưu đãi");
+        content.add(panelQuanLyNhanSu, "Nhân viên & ca");
+        content.add(panelQuanLyKhachHang, "Khách hàng");
+        content.add(reportView, "Báo cáo");
 
-        // Topbar phía trên
+        // Topbar phía trên: Breadcrumb bên trái, Thông tin ca trực & Nút Đổi ca bên phải
         JPanel right = new JPanel(new BorderLayout());
         JPanel topbar = new JPanel(new BorderLayout());
         topbar.setBackground(Theme.WHITE);
-        topbar.setBorder(new EmptyBorder(17, 30, 17, 24));
+        topbar.setBorder(new EmptyBorder(14, 28, 14, 24));
         topbar.add(breadcrumb, BorderLayout.WEST);
 
-        rolePicker.setToolTipText("Chọn vai trò làm việc để tự động lọc phân quyền màn hình");
-        topbar.add(Theme.row(Theme.label("VAI TRÒ LÀM VIỆC:", 10, Theme.ORANGE), rolePicker), BorderLayout.EAST);
+        lblCurrentShiftUser.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnDoiCaDangXuat.addActionListener(e -> xuLyDoiCaHoacDangXuat());
+
+        JPanel pnlUserShift = new JPanel(new FlowLayout(FlowLayout.RIGHT, 14, 0));
+        pnlUserShift.setOpaque(false);
+        pnlUserShift.add(lblCurrentShiftUser);
+        pnlUserShift.add(btnDoiCaDangXuat);
+        topbar.add(pnlUserShift, BorderLayout.EAST);
+
         right.add(topbar, BorderLayout.NORTH);
         right.add(content, BorderLayout.CENTER);
 
@@ -76,48 +100,41 @@ public final class WorkspaceView extends JPanel {
         right.add(footer, BorderLayout.SOUTH);
         add(right, BorderLayout.CENTER);
 
-        rolePicker.addActionListener(event -> setPreviewRole((PreviewRole) rolePicker.getSelectedItem()));
-        setPreviewRole(role);
+        setVaiTro(currentVaiTro);
+    }
+
+    public void xuLyDoiCaHoacDangXuat() {
+        Window win = SwingUtilities.getWindowAncestor(this);
+        DialogDangNhap loginDlg = new DialogDangNhap(win);
+        loginDlg.setVisible(true);
+        if (loginDlg.isDangNhapThanhCong()) {
+            applyAccountPermissions(DataStore.getTaiKhoanDangNhap());
+        }
     }
 
     public void applyAccountPermissions(TaiKhoan tk) {
-        if (tk == null) {
-            rolePicker.setEnabled(false);
-            lblProfileName.setText("HomuCafe · Khách");
-            lblProfileStatus.setText("● Chưa xác thực tài khoản");
-            setPreviewRole(PreviewRole.CASHIER);
-            return;
-        }
+        VaiTro vaiTro = VaiTro.tuTaiKhoan(tk);
+        String tenNV = (tk != null && tk.getNhanVien() != null) ? tk.getNhanVien().getHoTen() : (tk != null ? tk.getTenDangNhap() : "Khách");
+        String chucVu = (tk != null && tk.getNhanVien() != null) ? tk.getNhanVien().getChucVu() : vaiTro.getLabel();
 
-        String tenNV = tk.getNhanVien() != null ? tk.getNhanVien().getHoTen() : tk.getTenDangNhap();
-        String chucVu = tk.getNhanVien() != null ? tk.getNhanVien().getChucVu() : "Nhân viên";
+        lblCurrentShiftUser.setText("Ca trực: " + tenNV + "  ·  Vai trò: " + vaiTro.getLabel());
         lblProfileName.setText(tenNV);
-        lblProfileStatus.setText("● " + chucVu + " (" + tk.getTenDangNhap() + ")");
+        lblProfileStatus.setText("● " + chucVu + (tk != null ? " (" + tk.getTenDangNhap() + ")" : ""));
 
-        if ("ADMIN".equalsIgnoreCase(tk.getPhanQuyen())) {
-            rolePicker.setEnabled(true);
-            rolePicker.setToolTipText("Quản lý (ADMIN): Cho phép xem trước mọi vai trò làm việc");
-            setPreviewRole(PreviewRole.OWNER);
-        } else {
-            rolePicker.setEnabled(false);
-            rolePicker.setToolTipText("Tài khoản nhân viên (" + chucVu + ") được khóa phân quyền theo vai trò");
-            String cvLower = chucVu.toLowerCase();
-            String userLower = tk.getTenDangNhap() != null ? tk.getTenDangNhap().toLowerCase() : "";
-            if (cvLower.contains("pha chế") || cvLower.contains("bar") || userLower.contains("bar")) {
-                setPreviewRole(PreviewRole.BARISTA);
-            } else {
-                setPreviewRole(PreviewRole.CASHIER);
-            }
+        setVaiTro(vaiTro);
+
+        // Cập nhật lại thanh JMenuBar của cửa sổ chính
+        Window win = SwingUtilities.getWindowAncestor(this);
+        if (win instanceof JFrame frame) {
+            SwingLauncher.updateMenuBarForRole(frame, this, vaiTro);
         }
     }
 
-    public void setPreviewRole(PreviewRole selected) {
-        if (rolePicker.getSelectedItem() != selected) {
-            rolePicker.setSelectedItem(selected);
-            return;
-        }
-        role = selected;
-        reportView.setOwnerPreview(role == PreviewRole.OWNER);
+    public void setVaiTro(VaiTro selected) {
+        this.currentVaiTro = selected;
+        reportView.setOwnerPreview(selected == VaiTro.QUAN_LY);
+        panelQuanLyThucDon.setQuanLyMode(selected == VaiTro.QUAN_LY);
+
         sidebar.removeAll();
         navigation.clear();
 
@@ -136,11 +153,12 @@ public final class WorkspaceView extends JPanel {
         brand.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebar.add(brand);
 
-        sidebar.add(Box.createVerticalStrut(30));
-        sidebar.add(Theme.label("KHÔNG GIAN " + role.toString().toUpperCase(), 10, Theme.MUTED));
-        sidebar.add(Box.createVerticalStrut(12));
+        sidebar.add(Box.createVerticalStrut(26));
+        sidebar.add(Theme.label("VAI TRÒ: " + selected.getLabel().toUpperCase(), 10, Theme.MUTED));
+        sidebar.add(Box.createVerticalStrut(10));
 
-        for (String name : role.screens()) {
+        // Nạp chính xác các màn hình mà Role này được phép truy cập
+        for (String name : selected.screens()) {
             JButton button = Theme.navigationButton(name);
             button.setHorizontalAlignment(SwingConstants.LEFT);
             button.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -163,13 +181,20 @@ public final class WorkspaceView extends JPanel {
 
         sidebar.revalidate();
         sidebar.repaint();
-        showScreen(role.screens().get(0));
+
+        // Nếu màn hình hiện tại không nằm trong quyền truy cập của vai trò mới, chuyển về màn hình mặc định
+        if (!selected.screens().contains(currentScreenName)) {
+            showScreen(selected.screens().get(0));
+        } else {
+            showScreen(currentScreenName);
+        }
     }
 
     public void showScreen(String name) {
-        if (!role.screens().contains(name)) {
+        if (!currentVaiTro.screens().contains(name)) {
             return;
         }
+        currentScreenName = name;
         cards.show(content, name);
         breadcrumb.setText("Không gian làm việc   /   " + name);
         navigation.forEach((title, button) -> {
@@ -180,7 +205,7 @@ public final class WorkspaceView extends JPanel {
         });
     }
 
+    public VaiTro getCurrentVaiTro() { return currentVaiTro; }
     public VoucherView getVoucherView() { return voucherView; }
     public ReportView getReportView() { return reportView; }
 }
-

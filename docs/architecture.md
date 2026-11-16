@@ -8,7 +8,7 @@ Hệ thống HomuCafe tuân thủ mô hình 3 lớp chuẩn hóa theo đề cư�
 +-----------------------------------------------------------+
 |               1. TẦNG GIAO DIỆN (UI / VIEW)               |
 |  - com.homucafe.app (SwingLauncher, WorkspaceView,        |
-|    SampleScreens, DialogTuyBienMon)                       |
+|    PanelBanHangPOS, PanelSoDoBan, PanelQuayPhaChe, etc.)  |
 |  - com.homucafe.shared.ui (Theme, ComponentFactory)       |
 |  - com.homucafe.report (ReportView, ReportChart)          |
 |  - com.homucafe.voucher (VoucherView)                     |
