@@ -29,6 +29,8 @@ public class DataStore {
     private static final List<Voucher> dsVoucher = new ArrayList<>();
     private static final List<Ban> dsBan = new ArrayList<>();
     private static final List<PhieuDatBan> dsPhieuDatBan = new ArrayList<>();
+    private static final List<DonTamGiu> dsDonTamGiu = new ArrayList<>();
+    private static final List<PhieuChiCa> dsPhieuChiCa = new ArrayList<>();
     private static final Map<Integer, String> trangThaiBan = new LinkedHashMap<>();
     private static final List<Runnable> listeners = new ArrayList<>();
 
@@ -888,5 +890,57 @@ public class DataStore {
                 logSqlError("capNhatTrangThaiPhieuDatBan", t);
             }
         }).start();
+    }
+
+    // ==================== QUẢN LÝ ĐƠN TẠM GIỮ (HOLD ORDER / SPLIT BILL) ====================
+    public static List<DonTamGiu> getDsDonTamGiu() {
+        return Collections.unmodifiableList(dsDonTamGiu);
+    }
+
+    public static void themDonTamGiu(DonTamGiu d) {
+        if (d != null) {
+            dsDonTamGiu.add(0, d);
+            notifyDataChanged();
+        }
+    }
+
+    public static DonTamGiu layVaXoaDonTamGiu(int index) {
+        if (index >= 0 && index < dsDonTamGiu.size()) {
+            DonTamGiu d = dsDonTamGiu.remove(index);
+            notifyDataChanged();
+            return d;
+        }
+        return null;
+    }
+
+    public static boolean xoaDonTamGiu(int index) {
+        if (index >= 0 && index < dsDonTamGiu.size()) {
+            dsDonTamGiu.remove(index);
+            notifyDataChanged();
+            return true;
+        }
+        return false;
+    }
+
+    // ==================== SỔ PHIẾU CHI VẶT TRONG CA (PETTY CASH) ====================
+    public static List<PhieuChiCa> getDsPhieuChiCa() {
+        return Collections.unmodifiableList(dsPhieuChiCa);
+    }
+
+    public static PhieuChiCa themPhieuChiCa(double soTien, String lyDo, String nguoiChi) {
+        String ma = "PC" + String.format("%04d", dsPhieuChiCa.size() + 1);
+        PhieuChiCa pc = new PhieuChiCa(ma, LocalDateTime.now(), soTien, lyDo, nguoiChi);
+        dsPhieuChiCa.add(0, pc);
+        notifyDataChanged();
+        return pc;
+    }
+
+    public static double tinhTongChiTheoNgay(LocalDate date) {
+        if (date == null) date = LocalDate.now();
+        final LocalDate target = date;
+        return dsPhieuChiCa.stream()
+                .filter(pc -> pc.getThoiGian() != null && pc.getThoiGian().toLocalDate().isEqual(target))
+                .mapToDouble(PhieuChiCa::getSoTien)
+                .sum();
     }
 }

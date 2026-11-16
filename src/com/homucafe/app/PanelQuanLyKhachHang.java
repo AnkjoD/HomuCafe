@@ -11,9 +11,9 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
 /**
- * Màn hình 8: Quản lý khách hàng thân thiết.
+ * Màn hình 8: Quản lý khách hàng thân thiết & Hạng VIP (Bạc, Vàng, Kim Cương).
  * Tìm kiếm theo tên/SĐT/mã, Đăng ký thành viên mới (tặng điểm chào mừng),
- * sửa trực tiếp trên bảng và tự động quy đổi giá trị điểm thưởng.
+ * sửa trực tiếp trên bảng và tự động quy đổi giá trị điểm thưởng & hạng thành viên.
  */
 public class PanelQuanLyKhachHang extends JPanel {
 
@@ -25,16 +25,16 @@ public class PanelQuanLyKhachHang extends JPanel {
 
     private void initUI() {
         JPanel page = Theme.page("Khách hàng quen", "Khách quen của Homu.",
-                "Tra cứu lịch sử mua hàng, tích lũy điểm thưởng. Nhấp đúp ô để sửa trực tiếp thông tin khách hàng.");
+                "Tra cứu lịch sử mua hàng, hạng thành viên VIP và tích lũy điểm thưởng. Nhấp đúp ô để sửa trực tiếp thông tin.");
         JPanel body = new JPanel(new BorderLayout(0, 16));
         body.setOpaque(false);
 
-        String[] cols = {"MÃ KH", "HỌ TÊN KHÁCH HÀNG", "ĐIỆN THOẠI", "ĐIỂM TÍCH LŨY", "GIÁ TRỊ QUY ĐỔI"};
+        String[] cols = {"MÃ KH", "HỌ TÊN KHÁCH HÀNG", "ĐIỆN THOẠI", "HẠNG THÀNH VIÊN", "ĐIỂM TÍCH LŨY", "GIÁ TRỊ QUY ĐỔI"};
         final boolean[] updatingCustFromStore = {false};
         DefaultTableModel model = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 1 || column == 2 || column == 3;
+                return column == 1 || column == 2 || column == 4;
             }
 
             @Override
@@ -49,12 +49,13 @@ public class PanelQuanLyKhachHang extends JPanel {
                             switch (column) {
                                 case 1 -> kh.setHoTen(text);
                                 case 2 -> kh.setSoDienThoai(text);
-                                case 3 -> {
+                                case 4 -> {
                                     int pts = (int) DataStore.parseCurrency(text);
                                     kh.setDiemTichLuy(pts);
                                     updatingCustFromStore[0] = true;
-                                    setValueAt(pts + " điểm", row, 3);
-                                    setValueAt(String.format("%,.0f đ", (double) (pts * 1000)), row, 4);
+                                    setValueAt(kh.getHangThanhVien(), row, 3);
+                                    setValueAt(pts + " điểm", row, 4);
+                                    setValueAt(String.format("%,.0f đ", (double) (pts * 1000)), row, 5);
                                     updatingCustFromStore[0] = false;
                                 }
                             }
@@ -85,6 +86,7 @@ public class PanelQuanLyKhachHang extends JPanel {
                         kh.getMaKH(),
                         kh.getHoTen(),
                         kh.getSoDienThoai(),
+                        kh.getHangThanhVien(),
                         kh.getDiemTichLuy() + " điểm",
                         String.format("%,.0f đ", (double) (kh.getDiemTichLuy() * 1000))
                 });
@@ -103,9 +105,11 @@ public class PanelQuanLyKhachHang extends JPanel {
                 String ma = DataStore.nextMaKhachHang();
                 KhachHang khMoi = new KhachHang(ma, ten.trim(), sdt.trim(), 10);
                 DataStore.themKhachHangVaoDB(khMoi);
-                JOptionPane.showMessageDialog(page, "Đã tạo tài khoản thành viên [" + ma + "] thành công (Tặng 10 điểm chào mừng)!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(page,
+                        "Đã tạo tài khoản thành viên [" + ma + "] " + ten.trim() + " (" + khMoi.getHangThanhVien() + ") thành công!\n(Tặng 10 điểm chào mừng)",
+                        "Thành công", JOptionPane.INFORMATION_MESSAGE);
             } else if (sdt != null) {
-                JOptionPane.showMessageDialog(page, "Số điện thoại không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(page, "Số điện thoại không hợp lệ! (Phải gồm 10 chữ số di động VN)", "Lỗi Regex", JOptionPane.ERROR_MESSAGE);
             }
         });
 

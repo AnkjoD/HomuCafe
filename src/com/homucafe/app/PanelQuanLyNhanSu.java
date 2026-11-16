@@ -2,6 +2,7 @@ package com.homucafe.app;
 
 import com.homucafe.entity.HoaDon;
 import com.homucafe.entity.NhanVien;
+import com.homucafe.entity.PhieuChiCa;
 import com.homucafe.entity.TaiKhoan;
 import com.homucafe.shared.ui.Theme;
 import com.homucafe.util.DataStore;
@@ -14,7 +15,7 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * Màn hình 7: Quản lý nhân sự, ca làm & phân quyền tài khoản (THU_NGAN, PHA_CHE, QUAN_LY),
- * kèm tính năng Đối soát két tiền mặt kết ca tự động.
+ * kèm tính năng Sổ phiếu chi vặt trong ca (Petty Cash) và Đối soát két tiền mặt kết ca tự động.
  */
 public class PanelQuanLyNhanSu extends JPanel {
 
@@ -26,7 +27,7 @@ public class PanelQuanLyNhanSu extends JPanel {
 
     private void initUI() {
         JPanel page = Theme.page("Nhân sự & ca làm", "Cùng nhau vận hành Homu.",
-                "Hồ sơ nhân viên, phân quyền 3 vai trò (Thu ngân, Pha chế, Quản lý) & Đối soát tiền mặt kết ca.");
+                "Hồ sơ nhân viên, phân quyền 3 vai trò (Thu ngân, Pha chế, Quản lý), Sổ phiếu chi vặt & Đối soát két tiền.");
         JPanel body = new JPanel(new BorderLayout(0, 16));
         body.setOpaque(false);
 
@@ -102,9 +103,10 @@ public class PanelQuanLyNhanSu extends JPanel {
             }
         });
 
-        JButton btnThemNV = Theme.button("+ Thêm nhân viên mới", true);
+        JButton btnThemNV = Theme.button("+ Thêm nhân viên", true);
         JButton btnCapTaiKhoan = Theme.button("Cấp / Đổi tài khoản", false);
-        JButton btnToggleNV = Theme.button("Đổi trạng thái sử dụng", false);
+        JButton btnToggleNV = Theme.button("Đổi trạng thái", false);
+        JButton btnLapPhieuChi = Theme.button("Lập phiếu chi trong ca", false);
         JButton btnDoiSoatCa = Theme.button("Đối soát két tiền kết ca", false);
 
         btnCapTaiKhoan.addActionListener(e -> {
@@ -240,6 +242,44 @@ public class PanelQuanLyNhanSu extends JPanel {
             }
         });
 
+        // Sổ phiếu chi vặt trong ca (Petty Cash Log)
+        btnLapPhieuChi.addActionListener(e -> {
+            JTextField txtTienChi = new JTextField();
+            JTextField txtLyDoChi = new JTextField();
+            String nguoiDangTruc = (DataStore.getTaiKhoanDangNhap() != null && DataStore.getTaiKhoanDangNhap().getNhanVien() != null)
+                    ? DataStore.getTaiKhoanDangNhap().getNhanVien().getHoTen()
+                    : (DataStore.getTaiKhoanDangNhap() != null ? DataStore.getTaiKhoanDangNhap().getTenDangNhap() : "Quản lý");
+
+            JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
+            form.add(new JLabel("Người lập phiếu chi:"));
+            form.add(new JLabel(nguoiDangTruc));
+            form.add(new JLabel("Số tiền chi (VND) (*):"));
+            form.add(txtTienChi);
+            form.add(new JLabel("Lý do chi (*):"));
+            form.add(txtLyDoChi);
+
+            int opt = JOptionPane.showConfirmDialog(page, form, "Lập phiếu chi vặt trong ca (Petty Cash)", JOptionPane.OK_CANCEL_OPTION);
+            if (opt == JOptionPane.OK_OPTION) {
+                double soTien = DataStore.parseCurrency(txtTienChi.getText());
+                String lyDo = txtLyDoChi.getText().trim();
+                if (soTien <= 0) {
+                    JOptionPane.showMessageDialog(page, "Vui lòng nhập số tiền chi hợp lệ lớn hơn 0!", "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                if (lyDo.isEmpty()) {
+                    JOptionPane.showMessageDialog(page, "Vui lòng nhập lý do chi (VD: Mua thêm đá viên, mua sữa tươi, mua đồ vệ sinh...)!", "Thiếu lý do", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                PhieuChiCa pc = DataStore.themPhieuChiCa(soTien, lyDo, nguoiDangTruc);
+                JOptionPane.showMessageDialog(page,
+                        String.format("Đã ghi nhận Phiếu chi [%s] thành công!\n• Số tiền: %,.0f đ\n• Lý do: %s\n• Người chi: %s\nSố tiền này sẽ được tự động trừ trong Đối soát két tiền kết ca.",
+                                pc.getMaPhieuChi(), pc.getSoTien(), pc.getLyDo(), pc.getNguoiChi()),
+                        "Lập phiếu chi thành công", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+
+        // Đối soát két tiền kết ca
         btnDoiSoatCa.addActionListener(e -> {
             LocalDate activeDate = DataStore.getActiveBusinessDate();
             double tongTienMat = 0;
@@ -257,15 +297,16 @@ public class PanelQuanLyNhanSu extends JPanel {
                 }
             }
 
+            double tongChiTuPhieu = DataStore.tinhTongChiTheoNgay(activeDate);
             String ngayStr = activeDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             JTextField txtDauCa = new JTextField("1000000");
-            JTextField txtChiCa = new JTextField("0");
-            JTextField txtThucDem = new JTextField(String.format("%.0f", 1000000 + tongTienMat));
+            JTextField txtChiCa = new JTextField(String.format("%.0f", tongChiTuPhieu));
+            JTextField txtThucDem = new JTextField(String.format("%.0f", Math.max(0, 1000000 + tongTienMat - tongChiTuPhieu)));
 
             JPanel pnl = new JPanel(new GridLayout(0, 2, 10, 10));
             pnl.add(new JLabel("Ngày đối soát:")); pnl.add(new JLabel(ngayStr));
             pnl.add(new JLabel("Tiền mặt đầu ca (VND):")); pnl.add(txtDauCa);
-            pnl.add(new JLabel("Tiền chi trong ca (mua vặt...):")); pnl.add(txtChiCa);
+            pnl.add(new JLabel("Tiền chi trong ca (sổ phiếu chi):")); pnl.add(txtChiCa);
             pnl.add(new JLabel("Doanh thu Tiền mặt trong ngày:")); pnl.add(new JLabel(String.format("%,.0f đ (%d đơn)", tongTienMat, soDon)));
             pnl.add(new JLabel("Doanh thu Chuyển khoản (VietQR):")); pnl.add(new JLabel(String.format("%,.0f đ", tongCK)));
             pnl.add(new JLabel("Tiền mặt THỰC ĐẾM cuối ca:")); pnl.add(txtThucDem);
@@ -278,25 +319,40 @@ public class PanelQuanLyNhanSu extends JPanel {
                 double lyThuyet = dauCa + tongTienMat - chiCa;
                 double chenhLech = thucDem - lyThuyet;
 
+                // Liệt kê chi tiết các phiếu chi vặt trong ngày
+                StringBuilder sbChi = new StringBuilder();
+                int sttChi = 1;
+                for (PhieuChiCa pc : DataStore.getDsPhieuChiCa()) {
+                    if (pc.getThoiGian() != null && pc.getThoiGian().toLocalDate().isEqual(activeDate)) {
+                        sbChi.append(String.format("   %d. [%s] %,.0f đ - %s (Người chi: %s)\n",
+                                sttChi++, pc.getMaPhieuChi(), pc.getSoTien(), pc.getLyDo(), pc.getNguoiChi()));
+                    }
+                }
+                if (sbChi.length() == 0) {
+                    sbChi.append("   (Không có khoản chi vặt nào trong ca)\n");
+                }
+
                 String ketQua = String.format(
                         "BIÊN BẢN ĐỐI SOÁT TIỀN MẶT KẾT CA (%s)\n" +
                         "========================================\n" +
-                        "• Tiền đầu ca:           %,12.0f đ\n" +
-                        "• Thu tiền mặt trong ca:+%,12.0f đ\n" +
+                        "• Tiền mặt đầu ca:       %,12.0f đ\n" +
+                        "• Thu tiền mặt trong ca:+%,12.0f đ (%d đơn)\n" +
                         "• Chi phí trong ca:     -%,12.0f đ\n" +
+                        "----------------------------------------\n" +
+                        "DANH SÁCH PHIẾU CHI VẶT TRONG NGÀY:\n%s" +
                         "----------------------------------------\n" +
                         "• TIỀN MẶT LÝ THUYẾT:    %,12.0f đ\n" +
                         "• TIỀN MẶT THỰC ĐẾM:     %,12.0f đ\n" +
                         "========================================\n" +
                         "• ĐỘ LỆCH (Thừa / Thiếu):%,12.0f đ (%s)\n",
-                        ngayStr, dauCa, tongTienMat, chiCa, lyThuyet, thucDem,
+                        ngayStr, dauCa, tongTienMat, soDon, chiCa, sbChi.toString(), lyThuyet, thucDem,
                         chenhLech, chenhLech == 0 ? "Khớp hoàn hảo 100%" : (chenhLech > 0 ? "Thừa tiền két" : "Thiếu tiền két")
                 );
                 JOptionPane.showMessageDialog(page, ketQua, "Kết quả đối soát ca", chenhLech == 0 ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
             }
         });
 
-        body.add(Theme.row(btnThemNV, btnCapTaiKhoan, btnToggleNV, btnDoiSoatCa), BorderLayout.NORTH);
+        body.add(Theme.row(btnThemNV, btnCapTaiKhoan, btnToggleNV, btnLapPhieuChi, btnDoiSoatCa), BorderLayout.NORTH);
         body.add(Theme.tablePanel("Danh sách nhân sự (Nhấp đúp ô để sửa trực tiếp · Nhấp cột Trạng thái để bật/tắt)", table), BorderLayout.CENTER);
         page.add(body, BorderLayout.CENTER);
         add(page, BorderLayout.CENTER);

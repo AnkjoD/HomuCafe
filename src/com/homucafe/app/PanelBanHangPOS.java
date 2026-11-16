@@ -22,8 +22,9 @@ import java.util.Objects;
 
 /**
  * Màn hình 2: Bán hàng tại quầy (POS Counter).
- * Tùy biến món (Size/Đường/Đá/Topping), Giỏ hàng thao tác nhanh, Tra cứu Voucher,
- * Tích lũy/Đổi điểm khách hàng, Thanh toán Tiền mặt (Quick Cash) / VietQR, và In bill 80mm/Tem ly.
+ * Tùy biến món (Size/Đường/Đá/Topping), Giỏ hàng thao tác nhanh (+1, -1, Sửa, Tách bill, Xóa),
+ * Tạm giữ đơn hàng chờ [F4], Khôi phục đơn giữ, Ưu đãi hạng VIP tự động,
+ * Tra cứu Voucher, Tích lũy/Đổi điểm khách hàng, Thanh toán Tiền mặt (Quick Cash) / VietQR, và In bill 80mm/Tem ly.
  */
 public class PanelBanHangPOS extends JPanel {
     private static JComboBox<String> posTableComboRef;
@@ -52,7 +53,7 @@ public class PanelBanHangPOS extends JPanel {
 
     private void initUI() {
         JPanel page = Theme.page("Quầy thu ngân", "Bán hàng & Gọi thẻ rung",
-                "Phím tắt: [F1] Tạo đơn mới · [F2] Tìm món · [F3] Thanh toán");
+                "Phím tắt: [F1] Tạo đơn mới · [F2] Tìm món · [F3] Thanh toán · [F4] Giữ đơn");
         JPanel body = new JPanel(new BorderLayout(16, 0));
         body.setOpaque(false);
 
@@ -86,7 +87,7 @@ public class PanelBanHangPOS extends JPanel {
 
         // Bên phải: Hóa đơn & Giỏ hàng POS
         JPanel billPanel = Theme.surface(new BorderLayout(0, 10));
-        billPanel.setPreferredSize(new Dimension(390, 0));
+        billPanel.setPreferredSize(new Dimension(410, 0));
         billPanel.setBorder(new EmptyBorder(14, 14, 14, 14));
 
         JComboBox<String> cbTable = new JComboBox<>(new String[]{
@@ -109,7 +110,7 @@ public class PanelBanHangPOS extends JPanel {
         };
         refreshPagers.run();
 
-        // Nhận diện khách hàng & Tích điểm
+        // Nhận diện khách hàng & Tích điểm & Hạng VIP
         JTextField txtCustomerPhone = new JTextField(11);
         txtCustomerPhone.putClientProperty("JTextField.placeholderText", "SĐT khách thành viên");
         JLabel lblCustomerInfo = Theme.label("Khách vãng lai (Chưa tích điểm)", 11, Theme.MUTED);
@@ -119,9 +120,16 @@ public class PanelBanHangPOS extends JPanel {
         chkDungDiem.setOpaque(false);
         chkDungDiem.setEnabled(false);
 
+        // Nút Giữ đơn & Danh sách đơn giữ
+        JButton btnGiuDon = Theme.button("Giữ đơn [F4]", false);
+        JButton btnDanhSachDonGiu = Theme.button("Đơn giữ (" + DataStore.getDsDonTamGiu().size() + ")", false);
+        Runnable refreshHoldOrdersBadge = () -> btnDanhSachDonGiu.setText("Đơn giữ (" + DataStore.getDsDonTamGiu().size() + ")");
+        DataStore.addDataChangeListener(refreshHoldOrdersBadge);
+
         // Giỏ hàng
         List<ChiTietHoaDon> currentOrderItems = new ArrayList<>();
         final double[] subtotal = {0};
+        final double[] vipDiscount = {0};
         final double[] voucherDiscount = {0};
         final double[] loyaltyDiscount = {0};
         final Voucher[] activeVoucher = {null};
@@ -132,12 +140,12 @@ public class PanelBanHangPOS extends JPanel {
         };
         JTable tableCart = Theme.table(cartCols, new Object[0][]);
         tableCart.setModel(cartModel);
-        tableCart.getColumnModel().getColumn(0).setPreferredWidth(175);
+        tableCart.getColumnModel().getColumn(0).setPreferredWidth(185);
         tableCart.getColumnModel().getColumn(1).setPreferredWidth(35);
-        tableCart.getColumnModel().getColumn(2).setPreferredWidth(85);
+        tableCart.getColumnModel().getColumn(2).setPreferredWidth(90);
 
         JLabel lblSubtotal = Theme.label("Tổng tiền: 0 đ", 13, Theme.INK);
-        JLabel lblDiscount = Theme.label("Giảm giá (Voucher & Điểm): 0 đ", 12, Theme.MUTED);
+        JLabel lblDiscount = Theme.label("Giảm giá (VIP + Voucher + Điểm): 0 đ", 12, Theme.MUTED);
         JLabel lblTotal = Theme.label("Tổng cộng: 0 đ", 19, Theme.GREEN);
         lblTotal.setFont(new Font("Segoe UI", Font.BOLD, 19));
 
@@ -159,6 +167,14 @@ public class PanelBanHangPOS extends JPanel {
             }
             subtotal[0] = total;
 
+            // (c) Tự động tính ưu đãi hạng VIP
+            if (activeCustomer[0] != null) {
+                double vipPercent = activeCustomer[0].getPhanTramGiamVIP();
+                vipDiscount[0] = (subtotal[0] * vipPercent) / 100.0;
+            } else {
+                vipDiscount[0] = 0;
+            }
+
             // Tính lại voucher nếu có
             if (activeVoucher[0] != null) {
                 if (activeVoucher[0].isHopLe(subtotal[0])) {
@@ -171,25 +187,26 @@ public class PanelBanHangPOS extends JPanel {
                 voucherDiscount[0] = 0;
             }
 
-            // Tính đổi điểm loyalty (tối đa 50% đơn)
+            // Tính đổi điểm loyalty (tối đa 50% đơn sau khi trừ VIP và voucher)
             if (activeCustomer[0] != null && chkDungDiem.isSelected()) {
                 double maxDiemTien = activeCustomer[0].getDiemTichLuy() * 1000.0;
-                double maxGiamChoPhep = (subtotal[0] - voucherDiscount[0]) * 0.50;
+                double remaining = Math.max(0, subtotal[0] - vipDiscount[0] - voucherDiscount[0]);
+                double maxGiamChoPhep = remaining * 0.50;
                 loyaltyDiscount[0] = Math.max(0, Math.min(maxDiemTien, maxGiamChoPhep));
             } else {
                 loyaltyDiscount[0] = 0;
             }
 
-            double totalDiscount = voucherDiscount[0] + loyaltyDiscount[0];
+            double totalDiscount = vipDiscount[0] + voucherDiscount[0] + loyaltyDiscount[0];
             double finalPay = Math.max(0, subtotal[0] - totalDiscount);
 
             lblSubtotal.setText(String.format("Tổng tiền hàng: %,.0f đ", subtotal[0]));
             if (totalDiscount > 0) {
-                lblDiscount.setText(String.format("Giảm giá: -%,.0f đ (Voucher: %,.0f đ, Điểm: %,.0f đ)",
-                        totalDiscount, voucherDiscount[0], loyaltyDiscount[0]));
+                lblDiscount.setText(String.format("Giảm giá: -%,.0f đ (VIP: %,.0f đ, Voucher: %,.0f đ, Điểm: %,.0f đ)",
+                        totalDiscount, vipDiscount[0], voucherDiscount[0], loyaltyDiscount[0]));
                 lblDiscount.setForeground(Theme.ORANGE);
             } else {
-                lblDiscount.setText("Giảm giá: 0 đ");
+                lblDiscount.setText("Giảm giá (VIP + Voucher + Điểm): 0 đ");
                 lblDiscount.setForeground(Theme.MUTED);
             }
             lblTotal.setText(String.format("Tổng thanh toán: %,.0f đ", finalPay));
@@ -203,7 +220,7 @@ public class PanelBanHangPOS extends JPanel {
             KhachHang kh = DataStore.timKhachHangTheoSDT(sdt);
             if (kh != null) {
                 activeCustomer[0] = kh;
-                lblCustomerInfo.setText(kh.getHoTen() + " · Điểm: " + kh.getDiemTichLuy() + " (" + String.format("%,.0f đ", (double)(kh.getDiemTichLuy() * 1000)) + ")");
+                lblCustomerInfo.setText(kh.getHoTen() + " · " + kh.getHangThanhVien() + " · Điểm: " + kh.getDiemTichLuy() + " (" + String.format("%,.0f đ", (double)(kh.getDiemTichLuy() * 1000)) + ")");
                 lblCustomerInfo.setForeground(Theme.GREEN);
                 chkDungDiem.setEnabled(kh.getDiemTichLuy() > 0);
             } else {
@@ -221,19 +238,26 @@ public class PanelBanHangPOS extends JPanel {
         pnlCust.add(Theme.row(txtCustomerPhone, btnLookupCustomer), BorderLayout.NORTH);
         pnlCust.add(Theme.stack(2, lblCustomerInfo, chkDungDiem), BorderLayout.SOUTH);
 
-        JPanel pnlBillHeader = Theme.stack(8,
+        JPanel pnlHoldBar = new JPanel(new GridLayout(1, 2, 6, 0));
+        pnlHoldBar.setOpaque(false);
+        pnlHoldBar.add(btnGiuDon);
+        pnlHoldBar.add(btnDanhSachDonGiu);
+
+        JPanel pnlBillHeader = Theme.stack(6,
                 Theme.row(Theme.label("HÓA ĐƠN POS", 11, Theme.MUTED), Theme.label(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm")), 11, Theme.MUTED)),
                 cbTable,
                 cbPager,
-                pnlCust
+                pnlCust,
+                pnlHoldBar
         );
         billPanel.add(pnlBillHeader, BorderLayout.NORTH);
 
-        // Thanh công cụ thao tác giỏ hàng (+1 SL, -1 SL, Sửa tùy chọn, Xóa món)
-        JButton btnTangSL = Theme.button("+1 SL", false);
-        JButton btnGiamSL = Theme.button("-1 SL", false);
-        JButton btnSuaTuyChon = Theme.button("Sửa tùy chọn", false);
-        JButton btnXoaMon = Theme.button("Xóa món", false);
+        // Thanh công cụ thao tác giỏ hàng (+1 SL, -1 SL, Sửa tùy chọn, Tách bill, Xóa món)
+        JButton btnTangSL = Theme.button("+1", false);
+        JButton btnGiamSL = Theme.button("-1", false);
+        JButton btnSuaTuyChon = Theme.button("Sửa", false);
+        JButton btnTachBill = Theme.button("Tách bill", false);
+        JButton btnXoaMon = Theme.button("Xóa", false);
 
         btnTangSL.addActionListener(e -> {
             int row = tableCart.getSelectedRow();
@@ -305,11 +329,274 @@ public class PanelBanHangPOS extends JPanel {
             }
         });
 
-        JPanel pnlCartToolbar = new JPanel(new GridLayout(1, 4, 4, 0));
+        Runnable resetOrderState = () -> {
+            currentOrderItems.clear();
+            cartModel.setRowCount(0);
+            activeVoucher[0] = null;
+            activeCustomer[0] = null;
+            txtCustomerPhone.setText("");
+            lblCustomerInfo.setText("Khách vãng lai (Chưa tích điểm)");
+            lblCustomerInfo.setForeground(Theme.MUTED);
+            chkDungDiem.setSelected(false);
+            chkDungDiem.setEnabled(false);
+            recalculate.run();
+        };
+
+        // (a) Xử lý Giữ đơn [F4]
+        btnGiuDon.addActionListener(e -> {
+            if (currentOrderItems.isEmpty()) {
+                JOptionPane.showMessageDialog(page, "Giỏ hàng đang trống! Vui lòng chọn món trước khi tạm giữ.", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String defaultName = (activeCustomer[0] != null) ? activeCustomer[0].getHoTen() : (String) cbTable.getSelectedItem();
+            String note = JOptionPane.showInputDialog(page, "Nhập tên khách hoặc ghi chú cho đơn tạm giữ:", defaultName);
+            if (note == null) return;
+            note = note.trim().isEmpty() ? defaultName : note.trim();
+
+            String maDonTam = "HOLD-" + (System.currentTimeMillis() % 100000);
+            DonTamGiu donTam = new DonTamGiu(
+                    maDonTam,
+                    note,
+                    LocalDateTime.now(),
+                    (String) cbTable.getSelectedItem(),
+                    activeCustomer[0],
+                    new ArrayList<>(currentOrderItems)
+            );
+            DataStore.themDonTamGiu(donTam);
+            resetOrderState.run();
+            refreshHoldOrdersBadge.run();
+            JOptionPane.showMessageDialog(page, "Đã tạm giữ đơn hàng '" + note + "'. Quầy đã sẵn sàng phục vụ khách tiếp theo!", "Tạm giữ thành công [F4]", JOptionPane.INFORMATION_MESSAGE);
+        });
+
+        // (a) Xử lý Mở danh sách đơn giữ tạm
+        btnDanhSachDonGiu.addActionListener(e -> {
+            List<DonTamGiu> dsGiu = DataStore.getDsDonTamGiu();
+            if (dsGiu.isEmpty()) {
+                JOptionPane.showMessageDialog(page, "Hiện không có đơn hàng nào đang tạm giữ.", "Đơn giữ tạm", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            Window win = SwingUtilities.getWindowAncestor(page);
+            JDialog dlg = new JDialog(win, "Danh sách đơn hàng tạm giữ (" + dsGiu.size() + ")", Dialog.ModalityType.APPLICATION_MODAL);
+            JPanel root = new JPanel(new BorderLayout(0, 12));
+            root.setBackground(Theme.WHITE);
+            root.setBorder(new EmptyBorder(16, 18, 16, 18));
+
+            String[] cols = {"MÃ ĐƠN", "GHI CHÚ / KHÁCH", "BÀN", "SỐ MÓN", "TỔNG TIỀN", "THỜI GIAN GIỮ"};
+            DefaultTableModel model = new DefaultTableModel(cols, 0) {
+                @Override public boolean isCellEditable(int r, int c) { return false; }
+            };
+            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm:ss");
+            for (DonTamGiu d : dsGiu) {
+                model.addRow(new Object[]{
+                        d.getMaDonTam(),
+                        d.getTenGoiNho(),
+                        d.getBanChon(),
+                        d.getTongSoLuongMon() + " ly",
+                        String.format("%,.0f đ", d.getTongTienTamTinh()),
+                        d.getThoiGianGiu().format(dtf)
+                });
+            }
+
+            JTable tableGiu = Theme.table(cols, new Object[0][]);
+            tableGiu.setModel(model);
+            if (tableGiu.getRowCount() > 0) tableGiu.setRowSelectionInterval(0, 0);
+
+            root.add(Theme.tablePanel("Chọn 1 đơn tạm giữ để khôi phục hoặc xóa", tableGiu), BorderLayout.CENTER);
+
+            JButton btnRestore = Theme.button("✓ Khôi phục vào giỏ hàng POS", true);
+            JButton btnDelete = Theme.button("Xóa đơn giữ", false);
+            JButton btnClose = Theme.button("Đóng", false);
+
+            btnRestore.addActionListener(ev -> {
+                int row = tableGiu.getSelectedRow();
+                if (row < 0) {
+                    JOptionPane.showMessageDialog(dlg, "Vui lòng chọn 1 đơn hàng tạm giữ!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                if (!currentOrderItems.isEmpty()) {
+                    int confirm = JOptionPane.showConfirmDialog(dlg,
+                            "Giỏ hàng hiện tại đang có món. Bạn có chắc muốn ghi đè bằng đơn tạm giữ này?",
+                            "Xác nhận khôi phục", JOptionPane.YES_NO_OPTION);
+                    if (confirm != JOptionPane.YES_OPTION) return;
+                }
+
+                DonTamGiu d = DataStore.layVaXoaDonTamGiu(row);
+                if (d != null) {
+                    currentOrderItems.clear();
+                    currentOrderItems.addAll(d.getDsMon());
+                    if (d.getBanChon() != null) {
+                        cbTable.setSelectedItem(d.getBanChon());
+                    }
+                    if (d.getKhachHang() != null) {
+                        activeCustomer[0] = d.getKhachHang();
+                        txtCustomerPhone.setText(activeCustomer[0].getSoDienThoai());
+                        lblCustomerInfo.setText(activeCustomer[0].getHoTen() + " · " + activeCustomer[0].getHangThanhVien() + " · Điểm: " + activeCustomer[0].getDiemTichLuy());
+                        lblCustomerInfo.setForeground(Theme.GREEN);
+                        chkDungDiem.setEnabled(activeCustomer[0].getDiemTichLuy() > 0);
+                    } else {
+                        activeCustomer[0] = null;
+                        txtCustomerPhone.setText("");
+                        lblCustomerInfo.setText("Khách vãng lai (Chưa tích điểm)");
+                        lblCustomerInfo.setForeground(Theme.MUTED);
+                        chkDungDiem.setEnabled(false);
+                    }
+                    refreshCartTable.run();
+                    recalculate.run();
+                    refreshHoldOrdersBadge.run();
+                    dlg.dispose();
+                }
+            });
+
+            btnDelete.addActionListener(ev -> {
+                int row = tableGiu.getSelectedRow();
+                if (row < 0) {
+                    JOptionPane.showMessageDialog(dlg, "Vui lòng chọn 1 đơn hàng tạm giữ để xóa!", "Thông báo", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                int confirm = JOptionPane.showConfirmDialog(dlg, "Bạn có chắc chắn muốn xóa đơn tạm giữ này?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    DataStore.xoaDonTamGiu(row);
+                    model.removeRow(row);
+                    refreshHoldOrdersBadge.run();
+                    if (model.getRowCount() == 0) dlg.dispose();
+                }
+            });
+
+            btnClose.addActionListener(ev -> dlg.dispose());
+
+            JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+            footer.setOpaque(false);
+            footer.add(btnDelete);
+            footer.add(btnClose);
+            footer.add(btnRestore);
+            root.add(footer, BorderLayout.SOUTH);
+
+            dlg.setContentPane(root);
+            dlg.setSize(720, 380);
+            dlg.setLocationRelativeTo(win);
+            dlg.setVisible(true);
+        });
+
+        // (b) Xử lý Tách Bill (Split Bill)
+        btnTachBill.addActionListener(e -> {
+            int totalQty = currentOrderItems.stream().mapToInt(ChiTietHoaDon::getSoLuong).sum();
+            if (totalQty < 2) {
+                JOptionPane.showMessageDialog(page,
+                        "Giỏ hàng cần có từ 2 ly trở lên để thực hiện tách bill!",
+                        "Không thể tách bill", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            Window win = SwingUtilities.getWindowAncestor(page);
+            JDialog dlg = new JDialog(win, "Tách Bill Thanh Toán · HomuCafe", Dialog.ModalityType.APPLICATION_MODAL);
+            JPanel root = new JPanel(new BorderLayout(0, 14));
+            root.setBackground(Theme.WHITE);
+            root.setBorder(new EmptyBorder(16, 20, 16, 20));
+
+            JLabel lblTitle = Theme.label("Chọn số lượng món muốn tách ra thanh toán trước (Bill 1):", 13, Theme.INK);
+            lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            root.add(lblTitle, BorderLayout.NORTH);
+
+            JPanel pnlItems = new JPanel(new GridLayout(0, 1, 0, 8));
+            pnlItems.setOpaque(false);
+
+            List<JSpinner> spinners = new ArrayList<>();
+            for (ChiTietHoaDon ct : currentOrderItems) {
+                JPanel row = new JPanel(new BorderLayout(10, 0));
+                row.setOpaque(false);
+                JLabel lblItem = Theme.label(ct.getMon().getTenMon() + " (" + ct.getKichCo().name() + ") - Tổng: " + ct.getSoLuong() + " ly", 12, Theme.INK);
+                JSpinner sp = new JSpinner(new SpinnerNumberModel(0, 0, ct.getSoLuong(), 1));
+                sp.setPreferredSize(new Dimension(70, 30));
+                spinners.add(sp);
+                row.add(lblItem, BorderLayout.CENTER);
+                row.add(sp, BorderLayout.EAST);
+                pnlItems.add(row);
+            }
+
+            JScrollPane scroll = new JScrollPane(pnlItems);
+            scroll.setBorder(BorderFactory.createTitledBorder("Chi tiết món trong giỏ"));
+            root.add(scroll, BorderLayout.CENTER);
+
+            JButton btnConfirmSplit = Theme.button("✓ Xác nhận tách & Thanh toán Bill 1", true);
+            JButton btnCancelSplit = Theme.button("Hủy bỏ", false);
+            btnCancelSplit.addActionListener(ev -> dlg.dispose());
+
+            btnConfirmSplit.addActionListener(ev -> {
+                int totalSplit = 0;
+                for (JSpinner sp : spinners) {
+                    totalSplit += (Integer) sp.getValue();
+                }
+                if (totalSplit <= 0) {
+                    JOptionPane.showMessageDialog(dlg, "Vui lòng chọn ít nhất 1 ly để tách sang Bill 1!", "Chưa chọn món tách", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                if (totalSplit >= totalQty) {
+                    JOptionPane.showMessageDialog(dlg, "Bạn đang chọn toàn bộ món! Hãy chọn ít hơn tổng số lượng để tách thành 2 bill.", "Lỗi tách bill", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                List<ChiTietHoaDon> itemsBill1 = new ArrayList<>();
+                List<ChiTietHoaDon> itemsBill2 = new ArrayList<>();
+
+                for (int i = 0; i < currentOrderItems.size(); i++) {
+                    ChiTietHoaDon orig = currentOrderItems.get(i);
+                    int splitQty = (Integer) spinners.get(i).getValue();
+                    int remainQty = orig.getSoLuong() - splitQty;
+
+                    if (splitQty > 0) {
+                        ChiTietHoaDon ct1 = new ChiTietHoaDon(itemsBill1.size() + 1, orig.getMon(), orig.getKichCo(), splitQty, orig.getDonGiaThucTe(), orig.getMucDuong(), orig.getMucDa(), orig.getGhiChuTopping());
+                        itemsBill1.add(ct1);
+                    }
+                    if (remainQty > 0) {
+                        ChiTietHoaDon ct2 = new ChiTietHoaDon(itemsBill2.size() + 1, orig.getMon(), orig.getKichCo(), remainQty, orig.getDonGiaThucTe(), orig.getMucDuong(), orig.getMucDa(), orig.getGhiChuTopping());
+                        itemsBill2.add(ct2);
+                    }
+                }
+
+                // Tự động lưu Bill 2 vào DonTamGiu
+                String noteBill2 = "Bill 2 - " + ((activeCustomer[0] != null) ? activeCustomer[0].getHoTen() : (String) cbTable.getSelectedItem());
+                DonTamGiu donBill2 = new DonTamGiu(
+                        "SPLIT-" + (System.currentTimeMillis() % 100000),
+                        noteBill2,
+                        LocalDateTime.now(),
+                        (String) cbTable.getSelectedItem(),
+                        activeCustomer[0],
+                        itemsBill2
+                );
+                DataStore.themDonTamGiu(donBill2);
+
+                // Giỏ hiện tại nhận các món của Bill 1
+                currentOrderItems.clear();
+                currentOrderItems.addAll(itemsBill1);
+                refreshCartTable.run();
+                recalculate.run();
+                refreshHoldOrdersBadge.run();
+                dlg.dispose();
+
+                JOptionPane.showMessageDialog(page,
+                        "Đã tách bill thành công!\n• Giỏ hàng hiện tại là Bill 1 (" + totalSplit + " ly) sẵn sàng bấm Thanh toán ngay.\n• Các món còn lại (" + (totalQty - totalSplit) + " ly) đã được chuyển sang Đơn giữ tạm '" + noteBill2 + "' để thu tiếp sau.",
+                        "Tách Bill thành công", JOptionPane.INFORMATION_MESSAGE);
+            });
+
+            JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+            footer.setOpaque(false);
+            footer.add(btnCancelSplit);
+            footer.add(btnConfirmSplit);
+            root.add(footer, BorderLayout.SOUTH);
+
+            dlg.setContentPane(root);
+            dlg.setSize(520, 380);
+            dlg.setLocationRelativeTo(win);
+            dlg.setVisible(true);
+        });
+
+        JPanel pnlCartToolbar = new JPanel(new GridLayout(1, 5, 4, 0));
         pnlCartToolbar.setOpaque(false);
         pnlCartToolbar.add(btnTangSL);
         pnlCartToolbar.add(btnGiamSL);
         pnlCartToolbar.add(btnSuaTuyChon);
+        pnlCartToolbar.add(btnTachBill);
         pnlCartToolbar.add(btnXoaMon);
 
         JPanel pnlCartCenter = new JPanel(new BorderLayout(0, 6));
@@ -453,20 +740,6 @@ public class PanelBanHangPOS extends JPanel {
         pnlVoucherRow.add(txtVoucher, BorderLayout.CENTER);
         pnlVoucherRow.add(btnApplyVoucher, BorderLayout.EAST);
 
-        Runnable resetOrderState = () -> {
-            currentOrderItems.clear();
-            cartModel.setRowCount(0);
-            txtVoucher.setText("");
-            activeVoucher[0] = null;
-            activeCustomer[0] = null;
-            txtCustomerPhone.setText("");
-            lblCustomerInfo.setText("Khách vãng lai (Chưa tích điểm)");
-            lblCustomerInfo.setForeground(Theme.MUTED);
-            chkDungDiem.setSelected(false);
-            chkDungDiem.setEnabled(false);
-            recalculate.run();
-        };
-
         // Nút Thanh toán
         JButton btnPay = Theme.button("Thanh toán ngay [F3]", true);
         btnPay.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -491,7 +764,7 @@ public class PanelBanHangPOS extends JPanel {
                 }
             }
 
-            double totalDiscount = voucherDiscount[0] + loyaltyDiscount[0];
+            double totalDiscount = vipDiscount[0] + voucherDiscount[0] + loyaltyDiscount[0];
             double finalPrice = Math.max(0, subtotal[0] - totalDiscount);
             String maHD = DataStore.nextMaHoaDon();
             String banDuocChon = (String) cbTable.getSelectedItem();
@@ -599,6 +872,7 @@ public class PanelBanHangPOS extends JPanel {
                 // Reset giỏ hàng & khách hàng
                 resetOrderState.run();
                 refreshPagers.run();
+                refreshHoldOrdersBadge.run();
             }
         });
 
@@ -621,6 +895,12 @@ public class PanelBanHangPOS extends JPanel {
         page.getActionMap().put("pay", new AbstractAction() {
             @Override public void actionPerformed(java.awt.event.ActionEvent e) {
                 btnPay.doClick();
+            }
+        });
+        page.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("F4"), "holdOrder");
+        page.getActionMap().put("holdOrder", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) {
+                btnGiuDon.doClick();
             }
         });
 

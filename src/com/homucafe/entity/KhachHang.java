@@ -32,6 +32,30 @@ public class KhachHang {
         }
     }
 
+    public String getHangThanhVien() {
+        if (diemTichLuy >= 500) {
+            return "Kim Cương (VIP -10%)";
+        } else if (diemTichLuy >= 200) {
+            return "Hạng Vàng (-5%)";
+        } else if (diemTichLuy >= 50) {
+            return "Hạng Bạc (-3%)";
+        } else {
+            return "Thành viên Mới";
+        }
+    }
+
+    public double getPhanTramGiamVIP() {
+        if (diemTichLuy >= 500) {
+            return 10.0;
+        } else if (diemTichLuy >= 200) {
+            return 5.0;
+        } else if (diemTichLuy >= 50) {
+            return 3.0;
+        } else {
+            return 0.0;
+        }
+    }
+
     public String getMaKH() {
         return maKH;
     }

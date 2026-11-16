@@ -1,17 +1,23 @@
 package com.homucafe.app;
 
-import com.homucafe.entity.TaiKhoan;
+import com.homucafe.entity.*;
 import com.homucafe.shared.ui.Theme;
 import com.homucafe.util.DataStore;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Điểm khởi chạy chính ứng dụng HomuCafe POS & Pager System.
  * Tích hợp toàn diện giao diện phẳng hiện đại FlatLaf cùng thanh JMenuBar chuẩn IUH
- * và Màn hình Đăng nhập xác thực tài khoản thật, phân quyền động theo VaiTro.
+ * và Màn hình Đăng nhập xác thực tài khoản thật, phân quyền động theo VaiTro,
+ * kèm tính năng Sao lưu dữ liệu quán (Backup) 1-Click.
  */
 public class SwingLauncher {
 
@@ -87,6 +93,12 @@ public class SwingLauncher {
             dlg.setVisible(true);
         });
 
+        // Tính năng Sao lưu dữ liệu quán (Backup) 1-Click
+        JMenuItem mniBackup = new JMenuItem("Sao lưu dữ liệu quán (Backup)...");
+        mniBackup.setMnemonic(KeyEvent.VK_K);
+        mniBackup.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx() | KeyEvent.SHIFT_DOWN_MASK));
+        mniBackup.addActionListener(e -> thucHienSaoLuuDuLieu(frame));
+
         JMenuItem mniDangXuat = new JMenuItem("Đăng xuất");
         mniDangXuat.setMnemonic(KeyEvent.VK_Q);
         mniDangXuat.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx()));
@@ -108,6 +120,7 @@ public class SwingLauncher {
 
         menuHeThong.add(mniDangNhap);
         menuHeThong.add(mniDoiMatKhau);
+        menuHeThong.add(mniBackup);
         menuHeThong.add(mniDangXuat);
         menuHeThong.addSeparator();
         menuHeThong.add(mniThoat);
@@ -218,6 +231,8 @@ public class SwingLauncher {
             JOptionPane.showMessageDialog(frame,
                     "QUẢN LÝ BÁN HÀNG COFFEE TỰ PHỤC VỤ (COFFEE POS & PAGER SYSTEM)\n" +
                             "• Bán hàng: Chọn món -> Tùy biến Size/Đường/Đá/Topping -> Gán thẻ rung Pager -> Thanh toán\n" +
+                            "• Tạm giữ đơn [F4]: Lưu đơn hàng đang order để thanh toán cho khách sau, khôi phục bất cứ lúc nào\n" +
+                            "• Tách bill: Tách giỏ hàng thành nhiều đợt thanh toán (chia tiền món cho nhóm khách)\n" +
                             "• Quầy pha chế: Theo dõi hàng đợi FIFO, pha chế đồ uống và kích hoạt báo rung thẻ khi hoàn tất\n" +
                             "• Sơ đồ bàn: Theo dõi 12 bàn, Check-in đặt bàn, Dọn bàn\n" +
                             "• Báo biểu: Phân tích doanh thu, giờ cao điểm, phương thức thanh toán và đối soát ca tiền mặt",
@@ -239,5 +254,110 @@ public class SwingLauncher {
         menuBar.add(menuTroGiup);
 
         return menuBar;
+    }
+
+    private static void thucHienSaoLuuDuLieu(Component parent) {
+        JFileChooser chooser = new JFileChooser();
+        String defaultFileName = "HomuCafe_Backup_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm")) + ".sql";
+        chooser.setSelectedFile(new java.io.File(defaultFileName));
+        chooser.setDialogTitle("Chọn vị trí lưu file sao lưu CSDL HomuCafe");
+
+        int userSelection = chooser.showSaveDialog(parent);
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            java.io.File fileToSave = chooser.getSelectedFile();
+            try (OutputStreamWriter writer = new OutputStreamWriter(
+                    new FileOutputStream(fileToSave), StandardCharsets.UTF_8)) {
+
+                writer.write("-- ==========================================================\n");
+                writer.write("-- BẢN SAO LƯU DỮ LIỆU TOÀN DIỆN HOMUCAFE POS & PAGER SYSTEM\n");
+                writer.write("-- Ngày sao lưu: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")) + "\n");
+                writer.write("-- Người thực hiện: " + (DataStore.getTaiKhoanDangNhap() != null ? DataStore.getTaiKhoanDangNhap().getTenDangNhap() : "admin") + "\n");
+                writer.write("-- ==========================================================\n\n");
+
+                // 1. Khách hàng
+                writer.write("-- 1. DỮ LIỆU KHÁCH HÀNG THÂN THIẾT & ĐIỂM TÍCH LŨY\n");
+                for (KhachHang kh : DataStore.getDsKhachHang()) {
+                    writer.write(String.format("INSERT INTO KHACH_HANG (maKH, hoTen, soDienThoai, diemTichLuy) VALUES (N'%s', N'%s', '%s', %d);\n",
+                            escapeSql(kh.getMaKH()), escapeSql(kh.getHoTen()), kh.getSoDienThoai(), kh.getDiemTichLuy()));
+                }
+                writer.write("\n");
+
+                // 2. Nhân viên & Tài khoản
+                writer.write("-- 2. DỮ LIỆU NHÂN VIÊN & TÀI KHOẢN HỆ THỐNG\n");
+                for (NhanVien nv : DataStore.getDsNhanVien()) {
+                    writer.write(String.format("INSERT INTO NHAN_VIEN (maNV, hoTen, soDienThoai, cccd, chucVu, dangLamViec) VALUES ('%s', N'%s', '%s', '%s', N'%s', %d);\n",
+                            nv.getMaNV(), escapeSql(nv.getHoTen()), nv.getSoDienThoai(), nv.getCccd(), escapeSql(nv.getChucVu()), nv.isDangLamViec() ? 1 : 0));
+                }
+                for (TaiKhoan tk : DataStore.getDsTaiKhoan()) {
+                    writer.write(String.format("INSERT INTO TAI_KHOAN (tenDangNhap, matKhau, phanQuyen, maNV) VALUES ('%s', '%s', '%s', %s);\n",
+                            tk.getTenDangNhap(), tk.getMatKhau(), tk.getPhanQuyen(),
+                            tk.getNhanVien() != null ? "'" + tk.getNhanVien().getMaNV() + "'" : "NULL"));
+                }
+                writer.write("\n");
+
+                // 3. Thực đơn món
+                writer.write("-- 3. DỮ LIỆU THỰC ĐƠN MÓN NƯỚC\n");
+                for (Mon m : DataStore.getDsMon()) {
+                    writer.write(String.format("INSERT INTO MON (maMon, tenMon, donGiaGoc, maLoai, dangKinhDoanh, hinhAnh) VALUES ('%s', N'%s', %.0f, '%s', %d, '%s');\n",
+                            m.getMaMon(), escapeSql(m.getTenMon()), m.getDonGiaGoc(),
+                            m.getLoaiMon() != null ? m.getLoaiMon().getMaLoai() : "CF",
+                            m.isDangKinhDoanh() ? 1 : 0, m.getHinhAnh()));
+                }
+                writer.write("\n");
+
+                // 4. Voucher
+                writer.write("-- 4. DỮ LIỆU VOUCHER & KHUYẾN MÃI\n");
+                for (Voucher v : DataStore.getDsVoucher()) {
+                    writer.write(String.format("INSERT INTO VOUCHER (maVoucher, loaiGiam, giaTriGiam, donToiThieu, gioiHanLuot, soLuotDung, trangThai) VALUES ('%s', '%s', %.0f, %.0f, %d, %d, %d);\n",
+                            v.getMaVoucher(), v.getHinhThucGiam(), v.getGiaTriGiam(), v.getDonToiThieu(), v.getGioiHanLuot(), v.getSoLuotDung(), v.isTrangThai() ? 1 : 0));
+                }
+                writer.write("\n");
+
+                // 5. Hóa đơn & Chi tiết hóa đơn
+                writer.write("-- 5. DỮ LIỆU HÓA ĐƠN & CHI TIẾT HÓA ĐƠN\n");
+                for (HoaDon hd : DataStore.getDsHoaDon()) {
+                    String ngayLapStr = hd.getNgayLap() != null ? hd.getNgayLap().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "GETDATE()";
+                    writer.write(String.format("INSERT INTO HOA_DON (maHD, ngayLap, tongTien, giamGia, tienKhachDua, tienThoi, phuongThuc, hinhThuc, trangThaiDon, soTheRung, maNV, maKH, maVoucher) VALUES ('%s', '%s', %.0f, %.0f, %.0f, %.0f, '%s', '%s', '%s', %s, %s, %s, %s);\n",
+                            hd.getMaHD(), ngayLapStr, hd.getTongTien(), hd.getGiamGia(), hd.getTienKhachDua(), hd.getTienThoi(),
+                            hd.getPhuongThucThanhToan(), hd.getLoaiDon(), hd.getTrangThaiDon(),
+                            hd.getSoTheRung() > 0 ? String.valueOf(hd.getSoTheRung()) : "NULL",
+                            hd.getNhanVien() != null ? "'" + hd.getNhanVien().getMaNV() + "'" : "NULL",
+                            hd.getKhachHang() != null ? "N'" + escapeSql(hd.getKhachHang().getMaKH()) + "'" : "NULL",
+                            hd.getMaVoucher() != null ? "'" + hd.getMaVoucher() + "'" : "NULL"));
+
+                    if (hd.getDsChiTiet() != null) {
+                        for (ChiTietHoaDon ct : hd.getDsChiTiet()) {
+                            writer.write(String.format("INSERT INTO CHI_TIET_HOA_DON (maHD, maMon, kichCo, soLuong, donGiaThucTe, mucDuong, mucDa, ghiChuTopping) VALUES ('%s', '%s', '%s', %d, %.0f, %d, '%s', N'%s');\n",
+                                    hd.getMaHD(), ct.getMon() != null ? ct.getMon().getMaMon() : "CF01",
+                                    ct.getKichCo() != null ? ct.getKichCo().name() : "M",
+                                    ct.getSoLuong(), ct.getDonGiaThucTe(), ct.getMucDuong(), ct.getMucDa(), escapeSql(ct.getGhiChuTopping() != null ? ct.getGhiChuTopping() : "")));
+                        }
+                    }
+                }
+                writer.write("\n");
+
+                // 6. Phiếu chi vặt trong ca
+                writer.write("-- 6. SỔ PHIẾU CHI VẶT TRONG CA (PETTY CASH LOG)\n");
+                for (PhieuChiCa pc : DataStore.getDsPhieuChiCa()) {
+                    String tgStr = pc.getThoiGian() != null ? pc.getThoiGian().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "GETDATE()";
+                    writer.write(String.format("INSERT INTO PHIEU_CHI_CA (maPhieuChi, thoiGian, soTien, lyDo, nguoiChi) VALUES ('%s', '%s', %.0f, N'%s', N'%s');\n",
+                            pc.getMaPhieuChi(), tgStr, pc.getSoTien(), escapeSql(pc.getLyDo()), escapeSql(pc.getNguoiChi())));
+                }
+
+                writer.flush();
+                JOptionPane.showMessageDialog(parent,
+                        "Sao lưu dữ liệu CSDL HomuCafe thành công!\nĐường dẫn: " + fileToSave.getAbsolutePath(),
+                        "Sao lưu hoàn tất", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(parent,
+                        "Không thể lưu file sao lưu: " + ex.getMessage(),
+                        "Lỗi sao lưu", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private static String escapeSql(String s) {
+        if (s == null) return "";
+        return s.replace("'", "''");
     }
 }
