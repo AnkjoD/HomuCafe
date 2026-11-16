@@ -35,6 +35,34 @@ public class ConnectDB {
         return props;
     }
 
+    public static String getShopName() {
+        return loadExternalConfig().getProperty("shop.name", "HomuCafe · Coffee POS & Pager System").trim();
+    }
+
+    public static String getShopAddress() {
+        return loadExternalConfig().getProperty("shop.address", "12 Nguyễn Văn Bảo, Phường 4, Gò Vấp, TP.HCM (IUH)").trim();
+    }
+
+    public static String getShopPhone() {
+        return loadExternalConfig().getProperty("shop.phone", "0909 123 456").trim();
+    }
+
+    public static String getBankBin() {
+        return loadExternalConfig().getProperty("bank.bin", "970415").trim();
+    }
+
+    public static String getBankName() {
+        return loadExternalConfig().getProperty("bank.name", "VietinBank (CTG)").trim();
+    }
+
+    public static String getBankAccount() {
+        return loadExternalConfig().getProperty("bank.account", "102876543210").trim();
+    }
+
+    public static String getBankOwner() {
+        return loadExternalConfig().getProperty("bank.owner", "HOMU CAFE COFFEE POS").trim();
+    }
+
     public void connect() {
         Properties cfg = loadExternalConfig();
         String customUrl = cfg.getProperty("db.url", "").trim();
@@ -78,6 +106,16 @@ public class ConnectDB {
     }
 
     public static Connection getConnection() {
+        if (con != null) {
+            try {
+                if (con.isClosed() || !con.isValid(2)) {
+                    System.err.println("Kết nối SQL Server bị gián đoạn, đang thử kết nối lại...");
+                    instance.connect();
+                }
+            } catch (SQLException e) {
+                instance.connect();
+            }
+        }
         return con;
     }
 }

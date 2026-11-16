@@ -39,20 +39,8 @@ public class SwingLauncher {
 
             WorkspaceView workspaceView = new WorkspaceView();
 
-            // Phân quyền theo vai trò đăng nhập
-            TaiKhoan currentUser = DataStore.getTaiKhoanDangNhap();
-            if (currentUser != null) {
-                if ("ADMIN".equalsIgnoreCase(currentUser.getPhanQuyen())) {
-                    workspaceView.setPreviewRole(PreviewRole.OWNER);
-                } else {
-                    String cv = currentUser.getNhanVien() != null ? currentUser.getNhanVien().getChucVu().toLowerCase() : "";
-                    if (cv.contains("pha chế") || cv.contains("bar")) {
-                        workspaceView.setPreviewRole(PreviewRole.BARISTA);
-                    } else {
-                        workspaceView.setPreviewRole(PreviewRole.CASHIER);
-                    }
-                }
-            }
+            // Phân quyền & khóa RolePicker theo vai trò tài khoản đăng nhập
+            workspaceView.applyAccountPermissions(DataStore.getTaiKhoanDangNhap());
 
             frame.setJMenuBar(createMenuBar(workspaceView, frame));
             frame.setContentPane(workspaceView);
@@ -76,14 +64,7 @@ public class SwingLauncher {
             DialogDangNhap loginDlg = new DialogDangNhap(frame);
             loginDlg.setVisible(true);
             if (loginDlg.isDangNhapThanhCong()) {
-                TaiKhoan tk = DataStore.getTaiKhoanDangNhap();
-                if (tk != null) {
-                    if ("ADMIN".equalsIgnoreCase(tk.getPhanQuyen())) {
-                        workspaceView.setPreviewRole(PreviewRole.OWNER);
-                    } else {
-                        workspaceView.setPreviewRole(PreviewRole.CASHIER);
-                    }
-                }
+                workspaceView.applyAccountPermissions(DataStore.getTaiKhoanDangNhap());
             }
         });
 
@@ -103,12 +84,7 @@ public class SwingLauncher {
                 DialogDangNhap loginDlg = new DialogDangNhap(frame);
                 loginDlg.setVisible(true);
                 if (loginDlg.isDangNhapThanhCong()) {
-                    TaiKhoan tk = DataStore.getTaiKhoanDangNhap();
-                    if (tk != null && "ADMIN".equalsIgnoreCase(tk.getPhanQuyen())) {
-                        workspaceView.setPreviewRole(PreviewRole.OWNER);
-                    } else {
-                        workspaceView.setPreviewRole(PreviewRole.CASHIER);
-                    }
+                    workspaceView.applyAccountPermissions(DataStore.getTaiKhoanDangNhap());
                 }
             }
         });

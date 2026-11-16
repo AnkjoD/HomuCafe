@@ -1,5 +1,6 @@
 package com.homucafe.app;
 
+import com.homucafe.entity.TaiKhoan;
 import com.homucafe.report.ReportView;
 import com.homucafe.shared.ui.Theme;
 import com.homucafe.voucher.VoucherView;
@@ -23,9 +24,17 @@ public final class WorkspaceView extends JPanel {
 
     private final VoucherView voucherView = new VoucherView();
     private final ReportView reportView = new ReportView();
+    private final JLabel lblProfileName = Theme.label("HomuCafe · IUH", 12, Theme.INK);
+    private final JLabel lblProfileStatus = Theme.label("● Quán đang mở · 12 bàn", 10, Theme.MUTED);
     private PreviewRole role = PreviewRole.OWNER;
+    private static WorkspaceView currentInstance;
+
+    public static WorkspaceView getCurrentInstance() {
+        return currentInstance;
+    }
 
     public WorkspaceView() {
+        currentInstance = this;
         setLayout(new BorderLayout());
         setBackground(Theme.PAPER);
 
@@ -69,6 +78,37 @@ public final class WorkspaceView extends JPanel {
 
         rolePicker.addActionListener(event -> setPreviewRole((PreviewRole) rolePicker.getSelectedItem()));
         setPreviewRole(role);
+    }
+
+    public void applyAccountPermissions(TaiKhoan tk) {
+        if (tk == null) {
+            rolePicker.setEnabled(false);
+            lblProfileName.setText("HomuCafe · Khách");
+            lblProfileStatus.setText("● Chưa xác thực tài khoản");
+            setPreviewRole(PreviewRole.CASHIER);
+            return;
+        }
+
+        String tenNV = tk.getNhanVien() != null ? tk.getNhanVien().getHoTen() : tk.getTenDangNhap();
+        String chucVu = tk.getNhanVien() != null ? tk.getNhanVien().getChucVu() : "Nhân viên";
+        lblProfileName.setText(tenNV);
+        lblProfileStatus.setText("● " + chucVu + " (" + tk.getTenDangNhap() + ")");
+
+        if ("ADMIN".equalsIgnoreCase(tk.getPhanQuyen())) {
+            rolePicker.setEnabled(true);
+            rolePicker.setToolTipText("Quản lý (ADMIN): Cho phép xem trước mọi vai trò làm việc");
+            setPreviewRole(PreviewRole.OWNER);
+        } else {
+            rolePicker.setEnabled(false);
+            rolePicker.setToolTipText("Tài khoản nhân viên (" + chucVu + ") được khóa phân quyền theo vai trò");
+            String cvLower = chucVu.toLowerCase();
+            String userLower = tk.getTenDangNhap() != null ? tk.getTenDangNhap().toLowerCase() : "";
+            if (cvLower.contains("pha chế") || cvLower.contains("bar") || userLower.contains("bar")) {
+                setPreviewRole(PreviewRole.BARISTA);
+            } else {
+                setPreviewRole(PreviewRole.CASHIER);
+            }
+        }
     }
 
     public void setPreviewRole(PreviewRole selected) {
@@ -116,9 +156,7 @@ public final class WorkspaceView extends JPanel {
         // Hồ sơ người dùng góc dưới sidebar
         JPanel profile = Theme.surface(new BorderLayout(10, 0));
         profile.setBorder(new EmptyBorder(12, 12, 12, 12));
-        profile.add(Theme.stack(4,
-                Theme.label("HomuCafe · IUH", 12, Theme.INK),
-                Theme.label("● Quán đang mở · 12 bàn", 10, Theme.MUTED)));
+        profile.add(Theme.stack(4, lblProfileName, lblProfileStatus));
         profile.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65));
         profile.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebar.add(profile);

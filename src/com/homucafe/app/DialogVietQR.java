@@ -33,11 +33,10 @@ public class DialogVietQR extends JDialog {
     }
 
     private void initUI(Window owner) {
-        Properties cfg = ConnectDB.loadExternalConfig();
-        String bankBin = cfg.getProperty("bank.bin", "VCB").trim();
-        String bankAccount = cfg.getProperty("bank.account", "0123456789").trim();
-        String bankName = cfg.getProperty("bank.name", "Vietcombank (VCB)").trim();
-        String bankOwner = cfg.getProperty("bank.owner", "HOMU CAFE COFFEE POS").trim();
+        String bankBin = ConnectDB.getBankBin();
+        String bankAccount = ConnectDB.getBankAccount();
+        String bankName = ConnectDB.getBankName();
+        String bankOwner = ConnectDB.getBankOwner();
 
         setLayout(new BorderLayout());
         getContentPane().setBackground(Theme.WHITE);
@@ -104,35 +103,43 @@ public class DialogVietQR extends JDialog {
         qrCanvas.setOpaque(false);
         qrCanvas.setPreferredSize(new Dimension(260, 250));
 
-        // Tải ảnh QR chuẩn EMVCo Napas247 ở luồng nền (timeout 3 giây)
-        Thread qrLoader = new Thread(() -> {
-            try {
-                String urlStr = "https://img.vietqr.io/image/" + URLEncoder.encode(bankBin, StandardCharsets.UTF_8)
-                        + "-" + URLEncoder.encode(bankAccount, StandardCharsets.UTF_8)
-                        + "-compact.png?amount=" + Math.max(0L, (long) Math.round(soTien))
-                        + "&addInfo=" + URLEncoder.encode(maHD, StandardCharsets.UTF_8)
-                        + "&accountName=" + URLEncoder.encode(bankOwner, StandardCharsets.UTF_8);
+        // Tải ảnh QR chuẩn EMVCo Napas247 từ VietQR API qua SwingWorker (bất đồng bộ, timeout 3s)
+        long tienNguyen = Math.max(0L, (long) Math.round(soTien));
+        String urlStr = "https://img.vietqr.io/image/"
+                + URLEncoder.encode(bankBin, StandardCharsets.UTF_8)
+                + "-" + URLEncoder.encode(bankAccount, StandardCharsets.UTF_8)
+                + "-compact2.png?amount=" + tienNguyen
+                + "&addInfo=" + URLEncoder.encode(maHD, StandardCharsets.UTF_8)
+                + "&accountName=" + URLEncoder.encode(bankOwner, StandardCharsets.UTF_8);
+
+        SwingWorker<BufferedImage, Void> qrWorker = new SwingWorker<>() {
+            @Override
+            protected BufferedImage doInBackground() throws Exception {
                 URLConnection conn = URI.create(urlStr).toURL().openConnection();
                 conn.setConnectTimeout(3000);
                 conn.setReadTimeout(3000);
                 conn.setRequestProperty("User-Agent", "HomuCafe-POS/1.0");
                 try (InputStream is = conn.getInputStream()) {
-                    BufferedImage loaded = ImageIO.read(is);
-                    if (loaded != null) {
-                        vietQrImage = loaded;
-                        SwingUtilities.invokeLater(() -> {
-                            if (isDisplayable()) {
-                                qrCanvas.repaint();
-                            }
-                        });
-                    }
+                    return ImageIO.read(is);
                 }
-            } catch (Exception ignored) {
-                // Offline hoặc timeout -> tiếp tục dùng ảnh QR fallback vẽ bằng Java2D
             }
-        }, "VietQR-Loader");
-        qrLoader.setDaemon(true);
-        qrLoader.start();
+
+            @Override
+            protected void done() {
+                try {
+                    BufferedImage img = get();
+                    if (img != null) {
+                        vietQrImage = img;
+                        if (isDisplayable()) {
+                            qrCanvas.repaint();
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // Fallback Java2D sẵn có khi mất mạng hoặc timeout
+                }
+            }
+        };
+        qrWorker.execute();
 
         JPanel pnlInfo = new JPanel();
         pnlInfo.setLayout(new BoxLayout(pnlInfo, BoxLayout.Y_AXIS));

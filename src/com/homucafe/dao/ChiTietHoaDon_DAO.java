@@ -50,18 +50,41 @@ public class ChiTietHoaDon_DAO {
 
                     int mucDuong = 100;
                     String mucDa = "BINH_THUONG";
-                    String topping = ghiChu;
+                    String topping = "";
 
-                    // Parse ghi chú đường đá nếu có định dạng
-                    if (ghiChu != null) {
-                        if (ghiChu.contains("0% đường")) mucDuong = 0;
-                        else if (ghiChu.contains("30% đường")) mucDuong = 30;
-                        else if (ghiChu.contains("50% đường")) mucDuong = 50;
-                        else if (ghiChu.contains("70% đường")) mucDuong = 70;
+                    // Parse ghi chú đường đá và tách riêng phần topping nếu có
+                    if (ghiChu != null && !ghiChu.trim().isEmpty()) {
+                        String lower = ghiChu.toLowerCase();
+                        if (lower.contains("0% đường") && !lower.contains("100% đường") && !lower.contains("70% đường") && !lower.contains("50% đường") && !lower.contains("30% đường")) {
+                            mucDuong = 0;
+                        } else if (lower.contains("30% đường")) {
+                            mucDuong = 30;
+                        } else if (lower.contains("50% đường")) {
+                            mucDuong = 50;
+                        } else if (lower.contains("70% đường")) {
+                            mucDuong = 70;
+                        }
 
-                        if (ghiChu.contains("Không đá")) mucDa = "KHONG_DA";
-                        else if (ghiChu.contains("Ít đá")) mucDa = "IT_DA";
-                        else if (ghiChu.contains("Nóng") || ghiChu.contains("nóng")) mucDa = "NONG";
+                        if (lower.contains("không đá")) mucDa = "KHONG_DA";
+                        else if (lower.contains("ít đá")) mucDa = "IT_DA";
+                        else if (lower.contains("uống nóng") || lower.contains("nóng")) mucDa = "NONG";
+
+                        List<String> extraParts = new ArrayList<>();
+                        for (String part : ghiChu.split(",")) {
+                            String trimmed = part.trim();
+                            if (trimmed.isEmpty()) continue;
+                            String pLower = trimmed.toLowerCase();
+                            if (pLower.endsWith("% đường")
+                                    || pLower.equals("không đá")
+                                    || pLower.equals("ít đá")
+                                    || pLower.equals("bình thường")
+                                    || pLower.equals("đá thường")
+                                    || pLower.equals("uống nóng")) {
+                                continue;
+                            }
+                            extraParts.add(trimmed);
+                        }
+                        topping = String.join(", ", extraParts);
                     }
 
                     ChiTietHoaDon item = new ChiTietHoaDon(count++, mon, size, sl, dg, mucDuong, mucDa, topping);

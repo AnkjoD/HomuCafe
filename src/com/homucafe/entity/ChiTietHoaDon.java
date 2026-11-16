@@ -37,6 +37,9 @@ public class ChiTietHoaDon {
     }
 
     public String getMoTaTuyBien() {
+        if (ghiChuTopping != null && ghiChuTopping.toLowerCase().contains("% đường")) {
+            return ghiChuTopping.trim();
+        }
         StringBuilder sb = new StringBuilder();
         sb.append(mucDuong).append("% đường, ").append(formatMucDa(mucDa));
         if (ghiChuTopping != null && !ghiChuTopping.trim().isEmpty()) {

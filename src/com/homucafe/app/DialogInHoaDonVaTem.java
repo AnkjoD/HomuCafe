@@ -1,5 +1,6 @@
 package com.homucafe.app;
 
+import com.homucafe.connectdb.ConnectDB;
 import com.homucafe.entity.ChiTietHoaDon;
 import com.homucafe.entity.HoaDon;
 import com.homucafe.shared.ui.Theme;
@@ -146,13 +147,20 @@ public class DialogInHoaDonVaTem extends JDialog {
         return sticker;
     }
 
+    private static String centerText(String text, int width) {
+        if (text == null) return "";
+        if (text.length() >= width) return text.substring(0, width);
+        int pad = (width - text.length()) / 2;
+        return " ".repeat(pad) + text;
+    }
+
     private String generateBillContent(HoaDon hd) {
         StringBuilder bill = new StringBuilder();
         bill.append("========================================\n");
-        bill.append("               HOMU CAFE                \n");
-        bill.append("       COFFEE POS & PAGER SYSTEM        \n");
-        bill.append("   Đ/c: 12 Nguyễn Văn Bảo, Gò Vấp, HCM  \n");
-        bill.append("   Hotline: 0901 234 567 · Wifi: homucafe\n");
+        bill.append(centerText(ConnectDB.getShopName().toUpperCase(), 40)).append("\n");
+        bill.append(centerText("COFFEE POS & PAGER SYSTEM", 40)).append("\n");
+        bill.append(centerText(ConnectDB.getShopAddress(), 40)).append("\n");
+        bill.append(centerText("Hotline: " + ConnectDB.getShopPhone() + " · Wifi: homucafe", 40)).append("\n");
         bill.append("========================================\n");
         bill.append("Mã HĐ:       ").append(hd.getMaHoaDon()).append("\n");
         bill.append("Thời gian:   ").append(hd.getNgayLap().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))).append("\n");
@@ -203,18 +211,29 @@ public class DialogInHoaDonVaTem extends JDialog {
     private void inHoaDonNhiet(JTextArea textArea) {
         PrinterJob job = PrinterJob.getPrinterJob();
         job.setJobName("HomuCafe_Bill_" + hoaDon.getMaHoaDon());
+
+        java.awt.print.PageFormat pf = job.defaultPage();
+        java.awt.print.Paper paper = new java.awt.print.Paper();
+        // Khổ giấy in nhiệt 80mm x 297mm, chừa lề nhỏ 4pt tránh Windows cắt chữ
+        double wPt = 80.0 * 72.0 / 25.4;
+        double hPt = 297.0 * 72.0 / 25.4;
+        paper.setSize(wPt, hPt);
+        paper.setImageableArea(4, 4, wPt - 8, hPt - 8);
+        pf.setPaper(paper);
+        pf.setOrientation(java.awt.print.PageFormat.PORTRAIT);
+
         job.setPrintable((graphics, pageFormat, pageIndex) -> {
             if (pageIndex > 0) return Printable.NO_SUCH_PAGE;
             Graphics2D g2d = (Graphics2D) graphics;
             g2d.translate(pageFormat.getImageableX(), pageFormat.getImageableY());
-            g2d.setFont(new Font("Monospaced", Font.PLAIN, 9));
-            int y = 15;
+            g2d.setFont(new Font("Monospaced", Font.PLAIN, 8));
+            int y = 14;
             for (String line : textArea.getText().split("\n")) {
-                g2d.drawString(line, 5, y);
-                y += 12;
+                g2d.drawString(line, 4, y);
+                y += 11;
             }
             return Printable.PAGE_EXISTS;
-        });
+        }, pf);
 
         boolean doPrint = job.printDialog();
         if (doPrint) {
@@ -264,6 +283,17 @@ public class DialogInHoaDonVaTem extends JDialog {
 
         PrinterJob job = PrinterJob.getPrinterJob();
         job.setJobName("HomuCafe_TemLy_" + hoaDon.getMaHoaDon());
+
+        java.awt.print.PageFormat pf = job.defaultPage();
+        java.awt.print.Paper paper = new java.awt.print.Paper();
+        // Khổ tem nhiệt tiêu chuẩn 50mm x 30mm (1mm = 72 / 25.4 pt ~ 2.8346 pt)
+        double wPt = 50.0 * 72.0 / 25.4;   // ~141.7 pt
+        double hPt = 30.0 * 72.0 / 25.4;   // ~85.0 pt
+        paper.setSize(wPt, hPt);
+        paper.setImageableArea(4, 4, wPt - 8, hPt - 8);
+        pf.setPaper(paper);
+        pf.setOrientation(java.awt.print.PageFormat.PORTRAIT);
+
         job.setPrintable((graphics, pageFormat, pageIndex) -> {
             if (pageIndex >= stickers.size()) return Printable.NO_SUCH_PAGE;
             Graphics2D g2d = (Graphics2D) graphics;
@@ -276,7 +306,7 @@ public class DialogInHoaDonVaTem extends JDialog {
                 y += (i == 2 ? 13 : 11);
             }
             return Printable.PAGE_EXISTS;
-        });
+        }, pf);
 
         if (job.printDialog()) {
             try {

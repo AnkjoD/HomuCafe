@@ -33,17 +33,21 @@ public class DataStore {
     private static final List<Runnable> listeners = new ArrayList<>();
 
     private static TaiKhoan taiKhoanDangNhap;
-    private static int sttCounter = 14;
+    private static int sttCounter = 0;
 
     static {
         initSampleData();
         loadDataFromDatabaseIfAvailable();
+        syncCountersFromLoadedData();
     }
 
     private static void loadDataFromDatabaseIfAvailable() {
         try {
-            com.homucafe.connectdb.ConnectDB.getInstance().connect();
             java.sql.Connection con = com.homucafe.connectdb.ConnectDB.getConnection();
+            if (con == null) {
+                com.homucafe.connectdb.ConnectDB.getInstance().connect();
+                con = com.homucafe.connectdb.ConnectDB.getConnection();
+            }
             if (con != null) {
                 com.homucafe.dao.Mon_DAO monDAO = new com.homucafe.dao.Mon_DAO();
                 List<Mon> dbMon = monDAO.getAllMon();
@@ -95,22 +99,42 @@ public class DataStore {
 
                 com.homucafe.dao.PhieuDatBan_DAO pdbDAO = new com.homucafe.dao.PhieuDatBan_DAO();
                 List<PhieuDatBan> dbPDB = pdbDAO.getAllPhieuDatBan();
-                if (!dbPDB.isEmpty()) {
-                    dsPhieuDatBan.clear();
-                    dsPhieuDatBan.addAll(dbPDB);
-                }
+                dsPhieuDatBan.clear();
+                dsPhieuDatBan.addAll(dbPDB);
 
                 com.homucafe.dao.HoaDon_DAO hdDAO = new com.homucafe.dao.HoaDon_DAO();
                 List<HoaDon> dbHD = hdDAO.getAllHoaDon();
-                if (!dbHD.isEmpty()) {
-                    dsHoaDon.clear();
-                    dsHoaDon.addAll(dbHD);
-                }
+                dsHoaDon.clear();
+                dsHoaDon.addAll(dbHD);
+
                 System.out.println("☕ Đã đồng bộ dữ liệu SQL Server vào DataStore thành công!");
             }
         } catch (Throwable t) {
             System.err.println("Hoạt động ở chế độ In-Memory DataStore dự phòng: " + t.getMessage());
         }
+    }
+
+    private static void syncCountersFromLoadedData() {
+        String prefix = "HD" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd")) + "_";
+        int maxToday = 0;
+        for (HoaDon hd : dsHoaDon) {
+            if (hd.getMaHoaDon() != null && hd.getMaHoaDon().startsWith(prefix)) {
+                try {
+                    int n = Integer.parseInt(hd.getMaHoaDon().substring(prefix.length()));
+                    if (n > maxToday) maxToday = n;
+                } catch (NumberFormatException ignored) { }
+            }
+        }
+        sttCounter = maxToday;
+    }
+
+    /**
+     * Đồng bộ lại toàn bộ dữ liệu từ CSDL SQL Server (Hỗ trợ nhiều máy chạy chung mạng LAN).
+     */
+    public static void reloadFromDatabase() {
+        loadDataFromDatabaseIfAvailable();
+        syncCountersFromLoadedData();
+        notifyDataChanged();
     }
 
     private static void initSampleData() {
@@ -164,8 +188,6 @@ public class DataStore {
         TaiKhoan tkThuNgan = new TaiKhoan("thungan01", "123456", "STAFF", nv1);
         TaiKhoan tkBar = new TaiKhoan("bar01", "123456", "STAFF", nv2);
         dsTaiKhoan.addAll(Arrays.asList(tkAdmin, tkThuNgan, tkBar));
-
-        taiKhoanDangNhap = tkAdmin;
 
         // 5. Khách hàng thành viên
         KhachHang kh1 = new KhachHang("KH0001", "Nguyễn Hoàng Nam", "0987654321", 35);
@@ -276,7 +298,9 @@ public class DataStore {
                 new Thread(() -> {
                     try {
                         new com.homucafe.dao.TaiKhoan_DAO().doiMatKhau(tenDangNhap, matKhauMoi);
-                    } catch (Throwable ignored) { }
+                    } catch (Throwable t) {
+                        logSqlError("doiMatKhau", t);
+                    }
                 }).start();
                 return true;
             }
@@ -365,13 +389,108 @@ public class DataStore {
         return 1;
     }
 
-    public static int nextSoThuTuNgay() {
+    public static synchronized int nextSoThuTuNgay() {
         return ++sttCounter;
     }
 
-    public static String nextMaHoaDon() {
+    public static synchronized String nextMaHoaDon() {
         String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMdd"));
-        return String.format("HD%s_%04d", datePart, ++sttCounter);
+        String prefix = "HD" + datePart + "_";
+        int maxToday = 0;
+        Set<String> existing = new HashSet<>();
+        for (HoaDon hd : dsHoaDon) {
+            if (hd.getMaHoaDon() != null) {
+                String ma = hd.getMaHoaDon().trim();
+                existing.add(ma.toUpperCase());
+                if (ma.startsWith(prefix)) {
+                    try {
+                        int n = Integer.parseInt(ma.substring(prefix.length()));
+                        if (n > maxToday) maxToday = n;
+                    } catch (NumberFormatException ignored) { }
+                }
+            }
+        }
+        int candidate = Math.max(sttCounter, maxToday) + 1;
+        while (existing.contains((prefix + String.format("%04d", candidate)).toUpperCase())) {
+            candidate++;
+        }
+        sttCounter = candidate;
+        return prefix + String.format("%04d", candidate);
+    }
+
+    public static synchronized String nextMaKhachHang() {
+        List<String> ids = new ArrayList<>();
+        for (KhachHang kh : dsKhachHang) ids.add(kh.getMaKH());
+        return nextIdWithPrefix(ids, "KH", 4);
+    }
+
+    public static synchronized String nextMaNhanVien() {
+        List<String> ids = new ArrayList<>();
+        for (NhanVien nv : dsNhanVien) ids.add(nv.getMaNV());
+        return nextIdWithPrefix(ids, "NV", 2);
+    }
+
+    public static synchronized String nextMaPhieuDatBan() {
+        List<String> ids = new ArrayList<>();
+        for (PhieuDatBan pdb : dsPhieuDatBan) ids.add(pdb.getMaPhieu());
+        return nextIdWithPrefix(ids, "PDB", 3);
+    }
+
+    public static synchronized String nextMaMon(String tenLoai) {
+        String key = boDauTiengViet(tenLoai != null ? tenLoai : "").toLowerCase();
+        String prefix = "SP";
+        int digits = 3;
+        if (key.contains("ca phe")) {
+            prefix = "CF";
+            digits = 3;
+        } else if (key.contains("tra sua")) {
+            prefix = "MILK";
+            digits = 2;
+        } else if (key.contains("tra")) {
+            prefix = "TEA";
+            digits = 2;
+        } else if (key.contains("da xay")) {
+            prefix = "ICE";
+            digits = 2;
+        } else if (key.contains("banh")) {
+            prefix = "CAKE";
+            digits = 2;
+        }
+        List<String> ids = new ArrayList<>();
+        for (Mon m : dsMon) ids.add(m.getMaMon());
+        return nextIdWithPrefix(ids, prefix, digits);
+    }
+
+    private static String nextIdWithPrefix(Collection<String> existingIds, String prefix, int digits) {
+        int max = 0;
+        Set<String> used = new HashSet<>();
+        String upperPrefix = prefix.toUpperCase();
+        for (String raw : existingIds) {
+            if (raw == null) continue;
+            String id = raw.trim().toUpperCase();
+            used.add(id);
+            if (id.startsWith(upperPrefix)) {
+                String suffix = id.substring(upperPrefix.length()).replaceAll("[^0-9]", "");
+                if (!suffix.isEmpty()) {
+                    try {
+                        int num = Integer.parseInt(suffix);
+                        if (num > max) max = num;
+                    } catch (NumberFormatException ignored) { }
+                }
+            }
+        }
+        int next = max + 1;
+        String fmt = "%s%0" + digits + "d";
+        String candidate = String.format(fmt, prefix, next);
+        while (used.contains(candidate.toUpperCase())) {
+            next++;
+            candidate = String.format(fmt, prefix, next);
+        }
+        return candidate;
+    }
+
+    private static void logSqlError(String action, Throwable t) {
+        System.err.println("[SQL Sync Warning] " + action + ": " + t.getMessage());
     }
 
     public static boolean khopTimKiemMon(Mon mon, String keyword) {
@@ -410,7 +529,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.HoaDon_DAO().themHoaDon(hd);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("saveHoaDon", t);
+            }
         }).start();
     }
 
@@ -425,7 +546,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.HoaDon_DAO().capNhatTrangThaiDon(maHD, trangThai);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("saveTrangThaiHoaDon", t);
+            }
         }).start();
     }
 
@@ -463,7 +586,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.HoaDon_DAO().huyHoaDon(maHD, lyDoHuy, maNVXacNhan);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("huyHoaDon", t);
+            }
         }).start();
         return true;
     }
@@ -473,7 +598,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.Mon_DAO().capNhatMon(m);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("saveMon", t);
+            }
         }).start();
     }
 
@@ -483,7 +610,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.Mon_DAO().themMon(m);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("themMonVaoDB", t);
+            }
         }).start();
     }
 
@@ -492,7 +621,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.NhanVien_DAO().capNhatNhanVien(nv);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("saveNhanVien", t);
+            }
         }).start();
     }
 
@@ -502,7 +633,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.NhanVien_DAO().themNhanVien(nv);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("themNhanVienVaoDB", t);
+            }
         }).start();
     }
 
@@ -511,7 +644,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.KhachHang_DAO().capNhatKhachHang(kh);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("saveKhachHang", t);
+            }
         }).start();
     }
 
@@ -521,7 +656,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.KhachHang_DAO().themKhachHang(kh);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("themKhachHangVaoDB", t);
+            }
         }).start();
     }
 
@@ -537,7 +674,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.Ban_DAO().capNhatTrangThaiBan(soBan, trangThai);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("saveTrangThaiBan", t);
+            }
         }).start();
     }
 
@@ -549,7 +688,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.Voucher_DAO().themVoucher(v);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("saveVoucher", t);
+            }
         }).start();
     }
 
@@ -562,7 +703,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.Voucher_DAO().capNhatTrangThai(maVoucher, trangThai);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("capNhatTrangThaiVoucher", t);
+            }
         }).start();
     }
 
@@ -575,7 +718,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.Voucher_DAO().tangLuotDung(maVoucher);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("tangSoLuotVoucher", t);
+            }
         }).start();
     }
 
@@ -588,7 +733,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.Voucher_DAO().giamSoLuot(maVoucher);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("giamSoLuotVoucher", t);
+            }
         }).start();
     }
 
@@ -606,7 +753,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.PhieuDatBan_DAO().themPhieuDatBan(pdb);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("savePhieuDatBan", t);
+            }
         }).start();
     }
 
@@ -621,7 +770,9 @@ public class DataStore {
         new Thread(() -> {
             try {
                 new com.homucafe.dao.PhieuDatBan_DAO().capNhatTrangThai(maPhieu, trangThai);
-            } catch (Throwable ignored) { }
+            } catch (Throwable t) {
+                logSqlError("capNhatTrangThaiPhieuDatBan", t);
+            }
         }).start();
     }
 }

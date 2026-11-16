@@ -131,7 +131,7 @@ public final class ReportView extends JPanel {
             tongThu += finalPay;
             tongGiam += hd.getGiamGia();
 
-            if (hd.getPhuongThucThanhToan().contains("TIEN_MAT")) {
+            if (isTienMat(hd)) {
                 tienMat += finalPay;
             } else {
                 chuyenKhoan += finalPay;
@@ -283,27 +283,50 @@ public final class ReportView extends JPanel {
 
         // --- CẬP NHẬT TAB CA LÀM ---
         pnlShiftsContainer.removeAll();
-        JPanel shiftComparison = new ReportChart(COMPARE, new String[]{"Ca Sáng (8-14h)", "Ca Chiều (14-18h)", "Ca Tối (18-22h)"},
-                new double[]{tienMat * 0.4 / 1_000_000.0, tienMat * 0.35 / 1_000_000.0, tienMat * 0.25 / 1_000_000.0},
-                new double[]{tienMat * 0.4 / 1_000_000.0, tienMat * 0.35 / 1_000_000.0, tienMat * 0.25 / 1_000_000.0}, "tr.đ");
+        double[] shiftCash = new double[3];
+        double[] shiftQr = new double[3];
+        double[] shiftTotal = new double[3];
+        double[] shiftOrders = new double[3];
+
+        for (HoaDon hd : invoices) {
+            int hour = hd.getNgayLap() != null ? hd.getNgayLap().getHour() : 10;
+            int sIdx = (hour < 14) ? 0 : (hour < 18 ? 1 : 2);
+            double amt = hd.getTongTien();
+            shiftOrders[sIdx]++;
+            shiftTotal[sIdx] += amt;
+            if (isTienMat(hd)) {
+                shiftCash[sIdx] += amt;
+            } else {
+                shiftQr[sIdx] += amt;
+            }
+        }
+
+        double[] shiftCashMillions = {shiftCash[0] / 1_000_000.0, shiftCash[1] / 1_000_000.0, shiftCash[2] / 1_000_000.0};
+        JPanel shiftComparison = new ReportChart(COMPARE, new String[]{"Ca Sáng (6-14h)", "Ca Chiều (14-18h)", "Ca Tối (18-23h)"},
+                shiftCashMillions, shiftCashMillions, "tr.đ");
+
+        int curHour = LocalDateTime.now().getHour();
+        String stSang = curHour < 14 ? "Đang trực" : "Đã qua ca";
+        String stChieu = (curHour >= 14 && curHour < 18) ? "Đang trực" : (curHour < 14 ? "Chưa tới ca" : "Đã qua ca");
+        String stToi = curHour >= 18 ? "Đang trực" : "Chưa tới ca";
 
         pnlShiftsContainer.add(report(
                 "Đối soát tiền mặt theo ca làm việc",
-                "Theo dõi chênh lệch tiền mặt lý thuyết vs thực đếm",
+                "Tổng hợp thực tế từ thời điểm lập đơn · Ca Sáng (<14h), Ca Chiều (14h–18h), Ca Tối (>=18h)",
                 Theme.cards(
                         Theme.card("DOANH THU TIỀN MẶT", String.format("%,.0f đ", tienMat), "Cần nộp vào két cuối ca"),
                         Theme.card("DOANH THU CHUYỂN KHOẢN", String.format("%,.0f đ", chuyenKhoan), "Vào thẳng tài khoản VietQR"),
-                        Theme.card("TRẠNG THÁI ĐỐI SOÁT", "Khớp két", "0 đ chênh lệch")
+                        Theme.card("TỔNG SỐ ĐƠN HỢP LỆ", soDon + " đơn", "Đã phân bổ theo 3 khung ca trực")
                 ),
-                pair(chartCard("Dự kiến và thực đếm", "Xanh: lý thuyết · Cam: thực đếm", shiftComparison),
+                pair(chartCard("Tiền mặt thực thu theo ca", "Xanh: ghi nhận hệ thống · Cam: thực đếm chuẩn", shiftComparison),
                         chart("Lượng đơn theo ca", "Số lượng đơn hàng", COLUMNS,
-                                new String[]{"Ca Sáng", "Ca Chiều", "Ca Tối"}, new double[]{soDon * 0.4, soDon * 0.35, soDon * 0.25}, "đơn")),
-                "Bảng đối soát ca làm việc",
-                new String[]{"CA TRỰC", "TIỀN MẶT THU", "TIỀN QR THU", "TỔNG THU", "TRẠNG THÁI"},
+                                new String[]{"Ca Sáng", "Ca Chiều", "Ca Tối"}, shiftOrders, "đơn")),
+                "Bảng đối soát ca làm việc (Số liệu thật theo giờ lập đơn)",
+                new String[]{"CA TRỰC", "SỐ ĐƠN", "TIỀN MẶT THU", "TIỀN QR THU", "TỔNG THU", "TRẠNG THÁI"},
                 new Object[][]{
-                        {"Ca Sáng (8h–14h)", String.format("%,.0f đ", tienMat * 0.4), String.format("%,.0f đ", chuyenKhoan * 0.4), String.format("%,.0f đ", tongThu * 0.4), "Đã chốt"},
-                        {"Ca Chiều (14h–18h)", String.format("%,.0f đ", tienMat * 0.35), String.format("%,.0f đ", chuyenKhoan * 0.35), String.format("%,.0f đ", tongThu * 0.35), "Đã chốt"},
-                        {"Ca Tối (18h–22h)", String.format("%,.0f đ", tienMat * 0.25), String.format("%,.0f đ", chuyenKhoan * 0.25), String.format("%,.0f đ", tongThu * 0.25), "Đang trực"}
+                        {"Ca Sáng (06h–14h)", String.format("%.0f đơn", shiftOrders[0]), String.format("%,.0f đ", shiftCash[0]), String.format("%,.0f đ", shiftQr[0]), String.format("%,.0f đ", shiftTotal[0]), stSang},
+                        {"Ca Chiều (14h–18h)", String.format("%.0f đơn", shiftOrders[1]), String.format("%,.0f đ", shiftCash[1]), String.format("%,.0f đ", shiftQr[1]), String.format("%,.0f đ", shiftTotal[1]), stChieu},
+                        {"Ca Tối (18h–23h)", String.format("%.0f đơn", shiftOrders[2]), String.format("%,.0f đ", shiftCash[2]), String.format("%,.0f đ", shiftQr[2]), String.format("%,.0f đ", shiftTotal[2]), stToi}
                 }
         ));
 
@@ -404,7 +427,7 @@ public final class ReportView extends JPanel {
         for (HoaDon hd : invoices) {
             tongThu += hd.getTongTien();
             tongLy += hd.getTongSoLy();
-            if (hd.getPhuongThucThanhToan().contains("TIEN_MAT")) tienMat += hd.getTongTien();
+            if (isTienMat(hd)) tienMat += hd.getTongTien();
             else chuyenKhoan += hd.getTongTien();
         }
 
@@ -434,6 +457,12 @@ public final class ReportView extends JPanel {
         area.setBorder(new EmptyBorder(12, 14, 12, 14));
 
         JOptionPane.showMessageDialog(this, new JScrollPane(area), "Báo Cáo Kết Ca HomuCafe", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private static boolean isTienMat(HoaDon hd) {
+        String pt = hd != null ? hd.getPhuongThucThanhToan() : null;
+        if (pt == null || pt.trim().isEmpty()) return true;
+        return pt.toUpperCase().contains("TIEN_MAT") || pt.toLowerCase().contains("tiền mặt");
     }
 
     private JComponent report(String title, String note, JPanel cards, JPanel charts, String tableTitle, String[] cols, Object[][] rows) {

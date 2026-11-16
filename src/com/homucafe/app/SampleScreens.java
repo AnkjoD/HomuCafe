@@ -12,6 +12,7 @@ import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -43,11 +44,41 @@ final class SampleScreens {
     public static void selectPOSTable(String tableName) {
         if (posTableComboRef != null) {
             posTableComboRef.setSelectedItem(tableName);
-            WorkspaceView ws = (WorkspaceView) SwingUtilities.getAncestorOfClass(WorkspaceView.class, posTableComboRef);
-            if (ws != null) {
-                ws.showScreen("Bán hàng");
+        }
+        WorkspaceView ws = null;
+        if (posTableComboRef != null) {
+            ws = (WorkspaceView) SwingUtilities.getAncestorOfClass(WorkspaceView.class, posTableComboRef);
+        }
+        if (ws == null) {
+            ws = WorkspaceView.getCurrentInstance();
+        }
+        if (ws != null) {
+            ws.showScreen("Bán hàng");
+        }
+    }
+
+    private static LocalDate getActiveBusinessDate() {
+        LocalDate today = LocalDate.now();
+        LocalDate latest = null;
+        for (HoaDon hd : DataStore.getDsHoaDon()) {
+            if ("DA_HUY".equalsIgnoreCase(hd.getTrangThaiDon()) || hd.getNgayLap() == null) continue;
+            LocalDate d = hd.getNgayLap().toLocalDate();
+            if (d.isEqual(today)) {
+                return today;
+            }
+            if (latest == null || d.isAfter(latest)) {
+                latest = d;
             }
         }
+        return latest != null ? latest : today;
+    }
+
+    private static boolean isTienMat(HoaDon hd) {
+        String pt = hd != null ? hd.getPhuongThucThanhToan() : null;
+        if (pt == null || pt.trim().isEmpty()) return true;
+        String upper = pt.toUpperCase();
+        String lower = pt.toLowerCase();
+        return upper.contains("TIEN_MAT") || lower.contains("tiền mặt");
     }
 
     /* -------------------------------------------------------------
@@ -82,11 +113,13 @@ final class SampleScreens {
             int donDaThanhToan = 0;
             int theRungDangDung = 0;
             int banDangPhucVu = 0;
+            LocalDate activeDate = getActiveBusinessDate();
 
             Map<String, int[]> monStats = new HashMap<>(); // [soLuong, doanhThu]
 
             for (HoaDon hd : DataStore.getDsHoaDon()) {
-                if (!"DA_HUY".equals(hd.getTrangThaiDon())) {
+                boolean isActiveDate = hd.getNgayLap() != null && hd.getNgayLap().toLocalDate().isEqual(activeDate);
+                if (!"DA_HUY".equals(hd.getTrangThaiDon()) && isActiveDate) {
                     tongThu += hd.getTongTien();
                     donDaThanhToan++;
 
@@ -105,8 +138,9 @@ final class SampleScreens {
                 if ("DANG_PHUC_VU".equals(st)) banDangPhucVu++;
             }
 
+            String dateSuffix = activeDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             pnlCardsContainer.add(Theme.cards(
-                    Theme.card("TIỀN THU HÔM NAY", String.format("%,.0f đ", (double) tongThu), donDaThanhToan + " đơn đã thanh toán"),
+                    Theme.card("TIỀN THU NGÀY " + dateSuffix, String.format("%,.0f đ", (double) tongThu), donDaThanhToan + " đơn đã thanh toán"),
                     Theme.card("BÀN ĐANG PHỤC VỤ", banDangPhucVu + " / 12", (12 - banDangPhucVu) + " bàn sẵn sàng đón khách"),
                     Theme.card("THẺ RUNG ĐANG DÙNG", theRungDangDung + " / 20", DataStore.demSoTheRungRanh() + " thẻ sẵn sàng trên khay sạc")
             ), BorderLayout.CENTER);
@@ -664,6 +698,14 @@ final class SampleScreens {
                     DataStore.saveKhachHang(activeCustomer[0]);
                 }
 
+                // Reset trạng thái khách hàng cho đơn tiếp theo
+                activeCustomer[0] = null;
+                txtCustomerPhone.setText("");
+                lblCustomerInfo.setText("Khách vãng lai (Chưa tích điểm)");
+                lblCustomerInfo.setForeground(Theme.MUTED);
+                chkDungDiem.setSelected(false);
+                chkDungDiem.setEnabled(false);
+
                 // Cập nhật trạng thái bàn sang DANG_PHUC_VU
                 if (!banDuocChon.contains("Mang đi")) {
                     try {
@@ -1021,9 +1063,13 @@ final class SampleScreens {
 
         DataStore.addDataChangeListener(refreshBar);
         refreshBar.run();
-        new javax.swing.Timer(15000, e -> {
+        new javax.swing.Timer(5000, e -> {
             if (page.isShowing()) {
-                refreshBar.run();
+                if (com.homucafe.connectdb.ConnectDB.getConnection() != null) {
+                    DataStore.reloadFromDatabase();
+                } else {
+                    refreshBar.run();
+                }
             }
         }).start();
 
@@ -1066,7 +1112,7 @@ final class SampleScreens {
                         hd.getNgayLap().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
                         hd.getBanPhucVu() + (hd.getSoTheRung() > 0 ? " (Thẻ #" + hd.getSoTheRung() + ")" : ""),
                         hd.getNhanVien() != null ? hd.getNhanVien().getHoTen() : "Thu ngân",
-                        hd.getPhuongThucThanhToan().contains("TIEN_MAT") ? "Tiền mặt" : "VietQR",
+                        isTienMat(hd) ? "Tiền mặt" : "VietQR",
                         String.format("%,.0f đ", hd.getTongTien()),
                         statusStr
                 });
@@ -1254,12 +1300,48 @@ final class SampleScreens {
         JButton btnToggle = Theme.button("Đổi tình trạng sử dụng", false);
 
         btnThem.addActionListener(e -> {
-            String ten = JOptionPane.showInputDialog(page, "Nhập tên món mới:");
-            if (ten != null && !ten.trim().isEmpty()) {
-                String ma = "CF00" + (DataStore.getDsMon().size() + 1);
-                Mon newMon = new Mon(ma, ten.trim(), 40000, "0", true, DataStore.getDsLoaiMon().get(0));
+            JTextField txtTenMon = new JTextField();
+            JComboBox<LoaiMon> cbLoaiMon = new JComboBox<>();
+            for (LoaiMon lm : DataStore.getDsLoaiMon()) {
+                cbLoaiMon.addItem(lm);
+            }
+            JTextField txtGiaGoc = new JTextField("39000");
+            JComboBox<String> cbMinhHoa = new JComboBox<>(new String[]{
+                    "0 - Cà phê truyền thống",
+                    "1 - Latte / Espresso",
+                    "2 - Trà trái cây",
+                    "3 - Trà sữa / Matcha",
+                    "4 - Bánh ngọt / Cacao",
+                    "5 - Bạc xỉu / Đá lớp"
+            });
+
+            JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
+            form.add(new JLabel("Tên món đồ uống (*):")); form.add(txtTenMon);
+            form.add(new JLabel("Nhóm phân loại:")); form.add(cbLoaiMon);
+            form.add(new JLabel("Đơn giá gốc Size S (VND):")); form.add(txtGiaGoc);
+            form.add(new JLabel("Kiểu minh họa ly:")); form.add(cbMinhHoa);
+
+            int opt = JOptionPane.showConfirmDialog(page, form, "Thêm món mới vào thực đơn", JOptionPane.OK_CANCEL_OPTION);
+            if (opt == JOptionPane.OK_OPTION) {
+                String ten = txtTenMon.getText().trim();
+                if (ten.isEmpty()) {
+                    JOptionPane.showMessageDialog(page, "Vui lòng nhập tên món!", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                double gia = parseCurrency(txtGiaGoc.getText());
+                if (gia <= 0) {
+                    JOptionPane.showMessageDialog(page, "Đơn giá gốc phải lớn hơn 0 đ!", "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                LoaiMon loai = (LoaiMon) cbLoaiMon.getSelectedItem();
+                if (loai == null) {
+                    loai = !DataStore.getDsLoaiMon().isEmpty() ? DataStore.getDsLoaiMon().get(0) : new LoaiMon("LM01", "Cà phê");
+                }
+                String ma = DataStore.nextMaMon(loai.getTenLoai());
+                String hinhAnh = String.valueOf(Math.max(0, cbMinhHoa.getSelectedIndex()));
+                Mon newMon = new Mon(ma, ten, gia, hinhAnh, true, loai);
                 DataStore.themMonVaoDB(newMon);
-                JOptionPane.showMessageDialog(page, "Đã thêm món mới: " + ten, "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(page, "Đã thêm món mới [" + ma + "] " + ten + " thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
             }
         });
 
@@ -1383,6 +1465,10 @@ final class SampleScreens {
                 String cccd = txtCCCD.getText().trim();
                 String ten = txtTen.getText().trim();
 
+                if (ten.isEmpty()) {
+                    JOptionPane.showMessageDialog(page, "Vui lòng nhập họ tên nhân viên!", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
                 if (!sdt.matches("^0[3|5|7|8|9][0-9]{8}$")) {
                     JOptionPane.showMessageDialog(page, "Số điện thoại không hợp lệ! (Phải là số di động VN 10 chữ số)", "Lỗi Regex BR05", JOptionPane.ERROR_MESSAGE);
                     return;
@@ -1392,10 +1478,10 @@ final class SampleScreens {
                     return;
                 }
 
-                String maNV = "NV" + String.format("%02d", DataStore.getDsNhanVien().size() + 1);
+                String maNV = DataStore.nextMaNhanVien();
                 NhanVien nvMoi = new NhanVien(maNV, ten, sdt, cccd, (String) cbChucVu.getSelectedItem(), true);
                 DataStore.themNhanVienVaoDB(nvMoi);
-                JOptionPane.showMessageDialog(page, "Đã thêm nhân viên thành công: " + ten, "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(page, "Đã thêm nhân viên [" + maNV + "] " + ten + " thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
             }
         });
 
@@ -1416,13 +1502,15 @@ final class SampleScreens {
         });
 
         btnDoiSoatCa.addActionListener(e -> {
+            LocalDate activeDate = getActiveBusinessDate();
             double tongTienMat = 0;
             double tongCK = 0;
             int soDon = 0;
             for (HoaDon hd : DataStore.getDsHoaDon()) {
-                if (!"DA_HUY".equals(hd.getTrangThaiDon())) {
+                boolean sameDay = hd.getNgayLap() != null && hd.getNgayLap().toLocalDate().isEqual(activeDate);
+                if (!"DA_HUY".equals(hd.getTrangThaiDon()) && sameDay) {
                     soDon++;
-                    if (hd.getPhuongThucThanhToan().contains("TIEN_MAT")) {
+                    if (isTienMat(hd)) {
                         tongTienMat += hd.getTongTien();
                     } else {
                         tongCK += hd.getTongTien();
@@ -1430,18 +1518,20 @@ final class SampleScreens {
                 }
             }
 
+            String ngayStr = activeDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             JTextField txtDauCa = new JTextField("1000000");
             JTextField txtChiCa = new JTextField("0");
             JTextField txtThucDem = new JTextField(String.format("%.0f", 1000000 + tongTienMat));
 
             JPanel pnl = new JPanel(new GridLayout(0, 2, 10, 10));
+            pnl.add(new JLabel("Ngày đối soát:")); pnl.add(new JLabel(ngayStr));
             pnl.add(new JLabel("Tiền mặt đầu ca (VND):")); pnl.add(txtDauCa);
             pnl.add(new JLabel("Tiền chi trong ca (mua vặt...):")); pnl.add(txtChiCa);
-            pnl.add(new JLabel("Doanh thu Tiền mặt trong ca:")); pnl.add(new JLabel(String.format("%,.0f đ (%d đơn)", tongTienMat, soDon)));
+            pnl.add(new JLabel("Doanh thu Tiền mặt trong ngày:")); pnl.add(new JLabel(String.format("%,.0f đ (%d đơn)", tongTienMat, soDon)));
             pnl.add(new JLabel("Doanh thu Chuyển khoản (VietQR):")); pnl.add(new JLabel(String.format("%,.0f đ", tongCK)));
             pnl.add(new JLabel("Tiền mặt THỰC ĐẾM cuối ca:")); pnl.add(txtThucDem);
 
-            int opt = JOptionPane.showConfirmDialog(page, pnl, "Đối soát két tiền kết ca - HomuCafe", JOptionPane.OK_CANCEL_OPTION);
+            int opt = JOptionPane.showConfirmDialog(page, pnl, "Đối soát két tiền kết ca (" + ngayStr + ") - HomuCafe", JOptionPane.OK_CANCEL_OPTION);
             if (opt == JOptionPane.OK_OPTION) {
                 double dauCa = parseCurrency(txtDauCa.getText());
                 double chiCa = parseCurrency(txtChiCa.getText());
@@ -1450,17 +1540,17 @@ final class SampleScreens {
                 double chenhLech = thucDem - lyThuyet;
 
                 String ketQua = String.format(
-                        "BIÊN BẢN ĐỐI SOÁT TIỀN MẶT KẾT CA\n" +
+                        "BIÊN BẢN ĐỐI SOÁT TIỀN MẶT KẾT CA (%s)\n" +
                         "========================================\n" +
-                        "• Tiền đầu ca:         %,12.0f đ\n" +
-                        "• Thu tiền mặt trong ca: +,12.0f đ\n" +
-                        "• Chi phí trong ca:    -%,12.0f đ\n" +
+                        "• Tiền đầu ca:           %,12.0f đ\n" +
+                        "• Thu tiền mặt trong ca:+%,12.0f đ\n" +
+                        "• Chi phí trong ca:     -%,12.0f đ\n" +
                         "----------------------------------------\n" +
-                        "• TIỀN MẶT LÝ THUYẾT:   %,12.0f đ\n" +
-                        "• TIỀN MẶT THỰC ĐẾM:    %,12.0f đ\n" +
+                        "• TIỀN MẶT LÝ THUYẾT:    %,12.0f đ\n" +
+                        "• TIỀN MẶT THỰC ĐẾM:     %,12.0f đ\n" +
                         "========================================\n" +
-                        "• ĐỘ LỆCH (Thừa / Thiếu): %,12.0f đ (%s)\n",
-                        dauCa, tongTienMat, chiCa, lyThuyet, thucDem,
+                        "• ĐỘ LỆCH (Thừa / Thiếu):%,12.0f đ (%s)\n",
+                        ngayStr, dauCa, tongTienMat, chiCa, lyThuyet, thucDem,
                         chenhLech, chenhLech == 0 ? "Khớp hoàn hảo 100%" : (chenhLech > 0 ? "Thừa tiền két" : "Thiếu tiền két")
                 );
                 JOptionPane.showMessageDialog(page, ketQua, "Kết quả đối soát ca", chenhLech == 0 ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
@@ -1541,12 +1631,13 @@ final class SampleScreens {
         JButton btnThem = Theme.button("+ Đăng ký thành viên mới", true);
         btnThem.addActionListener(e -> {
             String ten = JOptionPane.showInputDialog(page, "Nhập họ tên khách hàng:");
+            if (ten == null || ten.trim().isEmpty()) return;
             String sdt = JOptionPane.showInputDialog(page, "Nhập số điện thoại (10 số):");
-            if (ten != null && sdt != null && sdt.matches("^0[3|5|7|8|9][0-9]{8}$")) {
-                String ma = "KH" + String.format("%04d", DataStore.getDsKhachHang().size() + 1);
+            if (sdt != null && sdt.trim().matches("^0[3|5|7|8|9][0-9]{8}$")) {
+                String ma = DataStore.nextMaKhachHang();
                 KhachHang khMoi = new KhachHang(ma, ten.trim(), sdt.trim(), 10);
                 DataStore.themKhachHangVaoDB(khMoi);
-                JOptionPane.showMessageDialog(page, "Đã tạo tài khoản thành viên thành công (Tặng 10 điểm chào mừng)!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(page, "Đã tạo tài khoản thành viên [" + ma + "] thành công (Tặng 10 điểm chào mừng)!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
             } else if (sdt != null) {
                 JOptionPane.showMessageDialog(page, "Số điện thoại không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
@@ -1588,10 +1679,12 @@ final class SampleScreens {
                 int available = Math.max(30, getHeight() - 180);
                 int width = Math.max(12, (getWidth() - 105) / 7);
 
+                LocalDate activeDate = getActiveBusinessDate();
                 int[] values = new int[7];
                 String[] hours = {"8h", "10h", "12h", "14h", "16h", "18h", "20h"};
                 for (HoaDon hd : DataStore.getDsHoaDon()) {
                     if ("DA_HUY".equalsIgnoreCase(hd.getTrangThaiDon()) || hd.getNgayLap() == null) continue;
+                    if (!hd.getNgayLap().toLocalDate().isEqual(activeDate)) continue;
                     int hour = hd.getNgayLap().getHour();
                     int idx = (hour < 10) ? 0
                             : (hour < 12) ? 1

@@ -97,12 +97,12 @@ public class DialogDatBan extends JDialog {
             // Tìm hoặc tạo khách hàng
             KhachHang kh = DataStore.timKhachHangTheoSDT(sdt);
             if (kh == null) {
-                String maKH = "KH" + String.format("%04d", DataStore.getDsKhachHang().size() + 1);
+                String maKH = DataStore.nextMaKhachHang();
                 kh = new KhachHang(maKH, ten, sdt, 0);
                 DataStore.themKhachHangVaoDB(kh);
             }
 
-            String maPhieu = "PDB" + String.format("%03d", DataStore.getDsPhieuDatBan().size() + 1);
+            String maPhieu = DataStore.nextMaPhieuDatBan();
             com.homucafe.entity.NhanVien nvLap = (DataStore.getTaiKhoanDangNhap() != null && DataStore.getTaiKhoanDangNhap().getNhanVien() != null)
                     ? DataStore.getTaiKhoanDangNhap().getNhanVien()
                     : DataStore.getDsNhanVien().get(0);
