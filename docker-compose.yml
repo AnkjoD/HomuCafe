@@ -1,0 +1,16 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: homucafe-sqlserver
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Sapassword@123
+    ports:
+      - "1433:1433"
+    volumes:
+      - ./sql/QuanLyCoffeePOS_HomuCafe.sql:/tmp/init.sql
+      - sqlserver_data:/var/opt/mssql
+
+volumes:
+  sqlserver_data:

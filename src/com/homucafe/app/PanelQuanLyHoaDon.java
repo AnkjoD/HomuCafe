@@ -132,7 +132,7 @@ public class PanelQuanLyHoaDon extends JPanel {
         loadInvoices.run();
 
         JButton btnPrint = Theme.button("In lại hóa đơn & Tem ly", false);
-        JButton btnCancel = Theme.button("Hủy hóa đơn (Void)", false);
+        JButton btnCancel = Theme.button("Hủy hóa đơn", false);
 
         btnPrint.addActionListener(e -> {
             int row = table.getSelectedRow();

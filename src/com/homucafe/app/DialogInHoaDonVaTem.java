@@ -45,7 +45,7 @@ public class DialogInHoaDonVaTem extends JDialog {
         txtBill.setBorder(new EmptyBorder(12, 16, 12, 16));
         pnlBill.add(new JScrollPane(txtBill), BorderLayout.CENTER);
 
-        JButton btnInHoaDon = Theme.button("In Hóa Đơn (80mm)", true);
+        JButton btnInHoaDon = Theme.button("🖨 In Hóa Đơn (80mm)", true);
         btnInHoaDon.addActionListener(e -> inHoaDonNhiet(txtBill));
         JPanel pnlBillBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         pnlBillBottom.setOpaque(false);
@@ -76,7 +76,7 @@ public class DialogInHoaDonVaTem extends JDialog {
         scrollTem.setBorder(BorderFactory.createEmptyBorder());
         pnlTem.add(scrollTem, BorderLayout.CENTER);
 
-        JButton btnInTem = Theme.button("In Toàn Bộ Tem Dán Ly", true);
+        JButton btnInTem = Theme.button("🏷 In Toàn Bộ Tem Dán Ly", true);
         btnInTem.addActionListener(e -> inToanBoTemDanLy(totalCups));
         JPanel pnlTemBottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         pnlTemBottom.setOpaque(false);
@@ -211,29 +211,18 @@ public class DialogInHoaDonVaTem extends JDialog {
     private void inHoaDonNhiet(JTextArea textArea) {
         PrinterJob job = PrinterJob.getPrinterJob();
         job.setJobName("HomuCafe_Bill_" + hoaDon.getMaHoaDon());
-
-        java.awt.print.PageFormat pf = job.defaultPage();
-        java.awt.print.Paper paper = new java.awt.print.Paper();
-        // Khổ giấy in nhiệt 80mm x 297mm, chừa lề nhỏ 4pt tránh Windows cắt chữ
-        double wPt = 80.0 * 72.0 / 25.4;
-        double hPt = 297.0 * 72.0 / 25.4;
-        paper.setSize(wPt, hPt);
-        paper.setImageableArea(4, 4, wPt - 8, hPt - 8);
-        pf.setPaper(paper);
-        pf.setOrientation(java.awt.print.PageFormat.PORTRAIT);
-
         job.setPrintable((graphics, pageFormat, pageIndex) -> {
             if (pageIndex > 0) return Printable.NO_SUCH_PAGE;
             Graphics2D g2d = (Graphics2D) graphics;
             g2d.translate(pageFormat.getImageableX(), pageFormat.getImageableY());
-            g2d.setFont(new Font("Monospaced", Font.PLAIN, 8));
-            int y = 14;
+            g2d.setFont(new Font("Monospaced", Font.PLAIN, 9));
+            int y = 15;
             for (String line : textArea.getText().split("\n")) {
-                g2d.drawString(line, 4, y);
-                y += 11;
+                g2d.drawString(line, 5, y);
+                y += 12;
             }
             return Printable.PAGE_EXISTS;
-        }, pf);
+        });
 
         boolean doPrint = job.printDialog();
         if (doPrint) {
